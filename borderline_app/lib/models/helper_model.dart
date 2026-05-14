@@ -1,3 +1,80 @@
+class Review {
+  final int id;
+  final int reviewer;
+  final String reviewerName;
+  final String? reviewerImage;
+  final int rating;
+  final List<String> tags;
+  final String note;
+  final String createdAt;
+
+  Review({
+    required this.id,
+    required this.reviewer,
+    required this.reviewerName,
+    this.reviewerImage,
+    required this.rating,
+    required this.tags,
+    required this.note,
+    required this.createdAt,
+  });
+
+  factory Review.fromJson(Map<String, dynamic> json) => Review(
+        id: json['id'] ?? 0,
+        reviewer: json['reviewer'] ?? 0,
+        reviewerName: json['reviewer_name'] ?? '',
+        reviewerImage: json['reviewer_image'],
+        rating: json['rating'] ?? 0,
+        tags: (json['tags'] as List? ?? []).map((t) => t.toString()).toList(),
+        note: json['note'] ?? '',
+        createdAt: json['created_at'] ?? '',
+      );
+}
+
+
+class HelpRequest {
+  final int id;
+  final int newcomer;
+  final String newcomerName;
+  final int? helper;
+  final String? helperName;
+  final String category;
+  final List<String> subTopics;
+  final String description;
+  final String package;
+  final String status;
+  final String createdAt;
+
+  HelpRequest({
+    required this.id,
+    required this.newcomer,
+    required this.newcomerName,
+    this.helper,
+    this.helperName,
+    required this.category,
+    required this.subTopics,
+    required this.description,
+    required this.package,
+    required this.status,
+    required this.createdAt,
+  });
+
+  factory HelpRequest.fromJson(Map<String, dynamic> json) => HelpRequest(
+        id: json['id'] ?? 0,
+        newcomer: json['newcomer'] ?? 0,
+        newcomerName: json['newcomer_name'] ?? '',
+        helper: json['helper'],
+        helperName: json['helper_name'],
+        category: json['category'] ?? '',
+        subTopics: (json['sub_topics'] as List? ?? []).map((t) => t.toString()).toList(),
+        description: json['description'] ?? '',
+        package: json['package'] ?? '',
+        status: json['status'] ?? 'pending',
+        createdAt: json['created_at'] ?? '',
+      );
+}
+
+
 class Specialty {
   final int id;
   final String name;

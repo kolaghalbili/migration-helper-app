@@ -6,6 +6,7 @@ import '../models/helper_model.dart';
 import 'login_screen.dart';
 import 'helper_detail_screen.dart';
 import 'inbox_screen.dart';
+import 'edit_profile_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -74,6 +75,17 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
             IconButton(
+              icon: const Icon(Icons.manage_accounts_outlined, color: Colors.white),
+              tooltip: 'Edit Profile',
+              onPressed: () async {
+                final updated = await Navigator.push<bool>(
+                  context,
+                  MaterialPageRoute(builder: (_) => const EditProfileScreen()),
+                );
+                if (updated == true) _loadHelpers();
+              },
+            ),
+            IconButton(
               icon: const Icon(Icons.logout, color: Colors.white),
               onPressed: () async {
                 await AuthService().logout();
@@ -82,7 +94,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       MaterialPageRoute(builder: (_) => const LoginScreen()));
                 }
               },
-            )
+            ),
           ],
       ),
       body: RefreshIndicator(

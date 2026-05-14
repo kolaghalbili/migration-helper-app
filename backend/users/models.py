@@ -1,5 +1,6 @@
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, PermissionsMixin
 from django.db import models
+from django.db.models import Avg, Count
 from django.utils import timezone
 
 
@@ -104,3 +105,61 @@ class UserImage(models.Model):
 
     def __str__(self):
         return f'{self.user.email} - image #{self.order}'
+
+
+class Review(models.Model):
+    reviewer   = models.ForeignKey(User, on_delete=models.CASCADE, related_name='reviews_given')
+    reviewee   = models.ForeignKey(User, on_delete=models.CASCADE, related_name='reviews_received')
+    rating     = models.PositiveSmallIntegerField()
+    tags       = models.JSONField(default=list)
+    note       = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('reviewer', 'reviewee')
+        ordering = ['-created_at']
+
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
+        agg = Review.objects.filter(reviewee=self.reviewee).aggregate(
+            avg=Avg('rating'), cnt=Count('id')
+        )
+        self.reviewee.rating_avg  = round(agg['avg'] or 0, 2)
+        self.reviewee.total_reviews = agg['cnt'] or 0
+        self.reviewee.save(update_fields=['rating_avg', 'total_reviews'])
+
+    def __str__(self):
+        return f'{self.reviewer} → {self.reviewee}: {self.rating}★'
+
+
+class HelpRequest(models.Model):
+    class Status(models.TextChoices):
+        PENDING   = 'pending',   'Pending'
+        ACCEPTED  = 'accepted',  'Accepted'
+        DECLINED  = 'declined',  'Declined'
+        DONE      = 'done',      'Done'
+        CANCELLED = 'cancelled', 'Cancelled'
+
+    class Package(models.TextChoices):
+        STARTER    = 'starter',    '2hr Starter'
+        HALF_DAY   = 'half_day',   'Half Day'
+        FIRST_WEEK = 'first_week', 'First Week'
+        CUSTOM     = 'custom',     'Custom'
+
+    newcomer    = models.ForeignKey(User, on_delete=models.CASCADE, related_name='help_requests')
+    helper      = models.ForeignKey(
+        User, on_delete=models.SET_NULL, null=True, blank=True, related_name='received_requests'
+    )
+    category    = models.CharField(max_length=100)
+    sub_topics  = models.JSONField(default=list)
+    description = models.TextField(blank=True)
+    package     = models.CharField(max_length=20, choices=Package.choices, blank=True)
+    status      = models.CharField(max_length=20, choices=Status.choices, default=Status.PENDING)
+    created_at  = models.DateTimeField(auto_now_add=True)
+    updated_at  = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f'Request #{self.id} by {self.newcomer} [{self.status}]'

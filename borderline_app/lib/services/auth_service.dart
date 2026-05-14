@@ -207,4 +207,137 @@ class AuthService {
       return [];
     }
   }
+
+  // ── Update profile ─────────────────────────────────────────────────────────
+
+  Future<bool> updateProfile({
+    String? firstName,
+    String? lastName,
+    String? bio,
+    String? nationality,
+    String? country,
+    String? city,
+    List<String>? languages,
+    double? hourlyRate,
+    bool? isAvailable,
+    List<int>? specialtyIds,
+  }) async {
+    try {
+      final Map<String, dynamic> data = {};
+      if (firstName != null)   data['first_name']   = firstName;
+      if (lastName != null)    data['last_name']     = lastName;
+      if (bio != null)         data['bio']           = bio;
+      if (nationality != null) data['nationality']   = nationality;
+      if (country != null)     data['country']       = country;
+      if (city != null)        data['city']          = city;
+      if (languages != null)   data['languages']     = languages;
+      if (hourlyRate != null)  data['hourly_rate']   = hourlyRate;
+      if (isAvailable != null) data['is_available']  = isAvailable;
+      if (specialtyIds != null) data['specialty_ids'] = specialtyIds;
+
+      final response = await _dio.patch(
+        '$baseUrl/users/me/',
+        data: data,
+        options: _authHeader,
+      );
+      return response.statusCode == 200;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  // ── Reviews ────────────────────────────────────────────────────────────────
+
+  Future<List<dynamic>> getReviews(int userId) async {
+    try {
+      final response = await _dio.get('$baseUrl/users/$userId/reviews/');
+      return response.data as List<dynamic>;
+    } catch (_) {
+      return [];
+    }
+  }
+
+  Future<bool> hasReviewed(int userId) async {
+    try {
+      final response = await _dio.get(
+        '$baseUrl/users/$userId/review/',
+        options: _authHeader,
+      );
+      return (response.data as Map<String, dynamic>)['has_reviewed'] == true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Future<Map<String, dynamic>?> submitReview({
+    required int userId,
+    required int rating,
+    required List<String> tags,
+    required String note,
+  }) async {
+    try {
+      final response = await _dio.post(
+        '$baseUrl/users/$userId/review/',
+        data: {'rating': rating, 'tags': tags, 'note': note},
+        options: _authHeader,
+      );
+      return response.data as Map<String, dynamic>;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  // ── Help requests ──────────────────────────────────────────────────────────
+
+  Future<Map<String, dynamic>?> createHelpRequest({
+    required String category,
+    required List<String> subTopics,
+    required String description,
+    required String package,
+    int? helperId,
+  }) async {
+    try {
+      final Map<String, dynamic> data = {
+        'category':    category,
+        'sub_topics':  subTopics,
+        'description': description,
+        'package':     package,
+      };
+      if (helperId != null) data['helper'] = helperId;
+
+      final response = await _dio.post(
+        '$baseUrl/requests/',
+        data: data,
+        options: _authHeader,
+      );
+      return response.data as Map<String, dynamic>;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<List<dynamic>> getMyRequests() async {
+    try {
+      final response = await _dio.get(
+        '$baseUrl/requests/',
+        options: _authHeader,
+      );
+      return response.data as List<dynamic>;
+    } catch (_) {
+      return [];
+    }
+  }
+
+  Future<bool> updateRequestStatus(int requestId, String status) async {
+    try {
+      final response = await _dio.patch(
+        '$baseUrl/requests/$requestId/status/',
+        data: {'status': status},
+        options: _authHeader,
+      );
+      return response.statusCode == 200;
+    } catch (_) {
+      return false;
+    }
+  }
 }

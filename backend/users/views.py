@@ -3,12 +3,13 @@ from rest_framework import generics, permissions, filters, status
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework_simplejwt.views import TokenObtainPairView
+from django.shortcuts import get_object_or_404
 from django.utils import timezone
-from .models import User, Specialty, UserImage
+from .models import User, Specialty, UserImage, Review, HelpRequest
 from .serializers import (
     RegisterSerializer, UserProfileSerializer, PublicHelperSerializer,
     SpecialtySerializer, UserImageSerializer, PublicUserSerializer,
-    LocationUpdateSerializer,
+    LocationUpdateSerializer, ReviewSerializer, HelpRequestSerializer,
 )
 
 
@@ -205,3 +206,100 @@ class SpecialtyListView(generics.ListAPIView):
     serializer_class = SpecialtySerializer
     permission_classes = [permissions.AllowAny]
     queryset = Specialty.objects.filter(is_active=True)
+
+
+# ── Reviews ───────────────────────────────────────────────────────────────────
+
+class UserReviewsView(generics.ListAPIView):
+    serializer_class = ReviewSerializer
+    permission_classes = [permissions.AllowAny]
+
+    def get_queryset(self):
+        return Review.objects.filter(
+            reviewee_id=self.kwargs['pk']
+        ).select_related('reviewer')
+
+
+class SubmitReviewView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, pk):
+        reviewee = get_object_or_404(User, pk=pk, is_active=True)
+        if reviewee == request.user:
+            return Response(
+                {'error': 'You cannot review yourself.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if Review.objects.filter(reviewer=request.user, reviewee=reviewee).exists():
+            return Response(
+                {'error': 'You have already reviewed this user.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        serializer = ReviewSerializer(data=request.data, context={'request': request})
+        serializer.is_valid(raise_exception=True)
+        review = serializer.save(reviewer=request.user, reviewee=reviewee)
+        return Response(
+            ReviewSerializer(review, context={'request': request}).data,
+            status=status.HTTP_201_CREATED,
+        )
+
+    def get(self, request, pk):
+        """Check whether the current user has already reviewed user pk."""
+        already = Review.objects.filter(
+            reviewer=request.user, reviewee_id=pk
+        ).exists()
+        return Response({'has_reviewed': already})
+
+
+# ── Help Requests ─────────────────────────────────────────────────────────────
+
+class HelpRequestView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+        if user.role == User.Role.HELPER:
+            qs = HelpRequest.objects.filter(helper=user)
+        else:
+            qs = HelpRequest.objects.filter(newcomer=user)
+        return Response(
+            HelpRequestSerializer(qs, many=True, context={'request': request}).data
+        )
+
+    def post(self, request):
+        serializer = HelpRequestSerializer(data=request.data, context={'request': request})
+        serializer.is_valid(raise_exception=True)
+        hr = serializer.save(newcomer=request.user)
+        return Response(
+            HelpRequestSerializer(hr, context={'request': request}).data,
+            status=status.HTTP_201_CREATED,
+        )
+
+
+class HelpRequestStatusView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def patch(self, request, pk):
+        hr = get_object_or_404(HelpRequest, pk=pk)
+        new_status = request.data.get('status')
+        valid = [c[0] for c in HelpRequest.Status.choices]
+
+        if not new_status or new_status not in valid:
+            return Response({'error': 'Invalid status.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        user = request.user
+        if new_status in ('accepted', 'declined') and hr.helper != user:
+            return Response(
+                {'error': 'Only the assigned helper can accept or decline.'},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        if new_status == 'cancelled' and hr.newcomer != user:
+            return Response(
+                {'error': 'Only the newcomer can cancel.'},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        hr.status = new_status
+        hr.save(update_fields=['status', 'updated_at'])
+        return Response(HelpRequestSerializer(hr, context={'request': request}).data)
