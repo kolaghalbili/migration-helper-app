@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../services/auth_service.dart';
 import '../services/api_service.dart';
 import '../models/helper_model.dart';
@@ -193,19 +194,12 @@ class _HomeScreenState extends State<HomeScreen> {
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(16),
-          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 8, offset: const Offset(0, 2))],
+          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 8, offset: const Offset(0, 2))],
         ),
         child: Row(
           children: [
-            // Avatar
-            CircleAvatar(
-              radius: 28,
-              backgroundColor: const Color(0xFFE8944A).withOpacity(0.2),
-              child: Text(
-                helper.firstName.isNotEmpty ? helper.firstName[0].toUpperCase() : '?',
-                style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Color(0xFFE8944A)),
-              ),
-            ),
+            // Avatar — shows profile image if available
+            _buildAvatar(helper),
             const SizedBox(width: 14),
             // Info
             Expanded(
@@ -236,7 +230,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       children: helper.specialties.take(3).map((s) => Container(
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                         decoration: BoxDecoration(
-                          color: const Color(0xFFE8944A).withOpacity(0.12),
+                          color: const Color(0xFFE8944A).withValues(alpha: 0.12),
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Text('${s.icon} ${s.name}',
@@ -261,6 +255,33 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
     );
   }
+
+  Widget _buildAvatar(Helper helper) {
+    final imageUrl = helper.primaryImageUrl;
+    if (imageUrl != null) {
+      return ClipOval(
+        child: CachedNetworkImage(
+          imageUrl: imageUrl,
+          width: 56,
+          height: 56,
+          fit: BoxFit.cover,
+          placeholder: (_, url) => _avatarFallback(helper),
+          errorWidget: (_, url, e) => _avatarFallback(helper),
+        ),
+      );
+    }
+    return _avatarFallback(helper);
+  }
+
+  Widget _avatarFallback(Helper helper) => CircleAvatar(
+        radius: 28,
+        backgroundColor: const Color(0xFFE8944A).withValues(alpha: 0.2),
+        child: Text(
+          helper.firstName.isNotEmpty ? helper.firstName[0].toUpperCase() : '?',
+          style: const TextStyle(
+              fontSize: 22, fontWeight: FontWeight.bold, color: Color(0xFFE8944A)),
+        ),
+      );
 
   @override
   void dispose() {
