@@ -62,6 +62,17 @@ class User(AbstractBaseUser, PermissionsMixin):
     origin_country = models.CharField(max_length=100, blank=True)  # kept for backwards compat
     languages      = models.JSONField(default=list)
 
+    class HelperScope(models.TextChoices):
+        ANY              = 'any',              'Open to all'
+        SAME_NATIONALITY = 'same_nationality', 'Same nationality only'
+        LANGUAGE_MATCH   = 'language_match',   'Language match'
+
+    helper_scope = models.CharField(
+        max_length=20,
+        choices=HelperScope.choices,
+        default=HelperScope.ANY,
+    )
+
     specialties    = models.ManyToManyField(Specialty, blank=True, related_name='helpers')
     hourly_rate    = models.DecimalField(max_digits=8, decimal_places=2, null=True, blank=True)
     is_available   = models.BooleanField(default=True)

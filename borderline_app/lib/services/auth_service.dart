@@ -51,6 +51,7 @@ class AuthService {
     String city = '',
     List<String> languages = const [],
     String bio = '',
+    String helperScope = 'any',
   }) async {
     try {
       final response = await _dio.post(
@@ -67,6 +68,7 @@ class AuthService {
           'city': city,
           'languages': languages,
           'bio': bio,
+          'helper_scope': helperScope,
         },
       );
       return response.statusCode == 201;
@@ -221,19 +223,21 @@ class AuthService {
     double? hourlyRate,
     bool? isAvailable,
     List<int>? specialtyIds,
+    String? helperScope,
   }) async {
     try {
       final Map<String, dynamic> data = {};
-      if (firstName != null)   data['first_name']   = firstName;
-      if (lastName != null)    data['last_name']     = lastName;
-      if (bio != null)         data['bio']           = bio;
-      if (nationality != null) data['nationality']   = nationality;
-      if (country != null)     data['country']       = country;
-      if (city != null)        data['city']          = city;
-      if (languages != null)   data['languages']     = languages;
-      if (hourlyRate != null)  data['hourly_rate']   = hourlyRate;
-      if (isAvailable != null) data['is_available']  = isAvailable;
+      if (firstName != null)    data['first_name']    = firstName;
+      if (lastName != null)     data['last_name']     = lastName;
+      if (bio != null)          data['bio']           = bio;
+      if (nationality != null)  data['nationality']   = nationality;
+      if (country != null)      data['country']       = country;
+      if (city != null)         data['city']          = city;
+      if (languages != null)    data['languages']     = languages;
+      if (hourlyRate != null)   data['hourly_rate']   = hourlyRate;
+      if (isAvailable != null)  data['is_available']  = isAvailable;
       if (specialtyIds != null) data['specialty_ids'] = specialtyIds;
+      if (helperScope != null)  data['helper_scope']  = helperScope;
 
       final response = await _dio.patch(
         '$baseUrl/users/me/',

@@ -9,6 +9,7 @@ import '../widgets/profile_image_picker.dart';
 import '../widgets/map_location_picker.dart';
 import 'login_screen.dart';
 import 'home_screen.dart';
+import 'helper_dashboard_screen.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -36,6 +37,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _nationalityCtrl = TextEditingController();
   List<String> _languages = [];
   final _bioCtrl = TextEditingController();
+  String _helperScope = 'any'; // newcomers only
 
   // ── Step 3 – Location ─────────────────────────────────────────────────────
   final _countryCtrl = TextEditingController();
@@ -122,6 +124,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       city: _cityCtrl.text.trim(),
       languages: _languages,
       bio: _bioCtrl.text.trim(),
+      helperScope: _helperScope,
     );
 
     if (!registered) {
@@ -171,8 +174,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
     setState(() => _isLoading = false);
 
     if (mounted) {
+      final dest = _selectedRole == 'helper'
+          ? const HelperDashboardScreen()
+          : const HomeScreen();
       Navigator.pushReplacement(
-          context, MaterialPageRoute(builder: (_) => const HomeScreen()));
+          context, MaterialPageRoute(builder: (_) => dest));
     }
   }
 
@@ -387,8 +393,71 @@ class _RegisterScreenState extends State<RegisterScreen> {
               Icons.edit_outlined,
             ),
           ),
+
+          if (_selectedRole == 'newcomer') ...[
+            const SizedBox(height: 28),
+            _label('Helper preference ★'),
+            const Text(
+              'How would you like to be matched with helpers?',
+              style: TextStyle(fontSize: 12, color: Color(0xFF7A8B9A)),
+            ),
+            const SizedBox(height: 12),
+            _buildScopeSelector(),
+          ],
         ],
       ),
+    );
+  }
+
+  Widget _buildScopeSelector() {
+    const options = [
+      {'value': 'any',              'icon': '🌍', 'label': 'Open to all',         'desc': 'Show me helpers from any background'},
+      {'value': 'same_nationality', 'icon': '🤝', 'label': 'Same nationality',    'desc': 'Prioritise helpers from my home country'},
+      {'value': 'language_match',   'icon': '💬', 'label': 'Language match',      'desc': 'Show helpers who speak my language(s)'},
+    ];
+    return Column(
+      children: options.map((opt) {
+        final selected = _helperScope == opt['value'];
+        return GestureDetector(
+          onTap: () => setState(() => _helperScope = opt['value'] as String),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 180),
+            margin: const EdgeInsets.only(bottom: 8),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            decoration: BoxDecoration(
+              color: selected ? const Color(0xFF1A3A5C) : Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: selected ? const Color(0xFF1A3A5C) : const Color(0xFFDCE5ED),
+              ),
+            ),
+            child: Row(
+              children: [
+                Text(opt['icon'] as String, style: const TextStyle(fontSize: 20)),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(opt['label'] as String,
+                          style: TextStyle(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 14,
+                              color: selected ? Colors.white : const Color(0xFF1A3A5C))),
+                      Text(opt['desc'] as String,
+                          style: TextStyle(
+                              fontSize: 12,
+                              color: selected ? Colors.white70 : const Color(0xFF7A8B9A))),
+                    ],
+                  ),
+                ),
+                if (selected)
+                  const Icon(Icons.check_circle, color: Color(0xFFE8944A), size: 20),
+              ],
+            ),
+          ),
+        );
+      }).toList(),
     );
   }
 

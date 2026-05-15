@@ -32,7 +32,7 @@ class RegisterSerializer(serializers.ModelSerializer):
         model = User
         fields = [
             'email', 'password', 'password2', 'first_name', 'last_name', 'role',
-            'nationality', 'country', 'city', 'languages', 'bio',
+            'nationality', 'country', 'city', 'languages', 'bio', 'helper_scope',
         ]
 
     def validate(self, attrs):
@@ -66,7 +66,7 @@ class UserProfileSerializer(serializers.ModelSerializer):
             'phone', 'country', 'city', 'nationality', 'origin_country', 'languages',
             'latitude', 'longitude', 'location_tracking_enabled', 'location_updated_at',
             'specialties', 'specialty_ids', 'hourly_rate', 'is_available', 'is_verified',
-            'rating_avg', 'total_reviews', 'total_sessions', 'profile_images',
+            'rating_avg', 'total_reviews', 'total_sessions', 'profile_images', 'helper_scope',
         ]
         read_only_fields = [
             'id', 'email', 'role', 'is_verified', 'rating_avg', 'total_reviews', 'total_sessions',
