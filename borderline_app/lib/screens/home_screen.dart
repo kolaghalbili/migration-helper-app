@@ -10,6 +10,7 @@ import 'helper_dashboard_screen.dart';
 import 'map_screen.dart';
 import 'edit_profile_screen.dart';
 import 'search_filter_screen.dart';
+import 'quick_match_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -295,22 +296,57 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildSearchBar() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: TextField(
-        controller: _searchController,
-        onChanged: (_) => _applyFilters(),
-        decoration: InputDecoration(
-          hintText: 'Search by name or city...',
-          prefixIcon: const Icon(Icons.search, color: Color(0xFF7A8B9A)),
-          filled: true,
-          fillColor: Colors.white,
-          border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(14),
-              borderSide: BorderSide.none),
-          contentPadding: const EdgeInsets.symmetric(vertical: 14),
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          child: TextField(
+            controller: _searchController,
+            onChanged: (_) => _applyFilters(),
+            decoration: InputDecoration(
+              hintText: 'Search by name or city...',
+              prefixIcon: const Icon(Icons.search, color: Color(0xFF7A8B9A)),
+              filled: true,
+              fillColor: Colors.white,
+              border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(14),
+                  borderSide: BorderSide.none),
+              contentPadding: const EdgeInsets.symmetric(vertical: 14),
+            ),
+          ),
         ),
-      ),
+        GestureDetector(
+          onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const QuickMatchScreen()),
+          ),
+          child: Container(
+            margin: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+            padding:
+                const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            decoration: BoxDecoration(
+              color: const Color(0xFF1A3A5C),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: const [
+                Icon(Icons.bolt, color: Color(0xFFE8944A), size: 18),
+                SizedBox(width: 6),
+                Text('Quick Match',
+                    style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14)),
+                Spacer(),
+                Text('tinder-style →',
+                    style:
+                        TextStyle(color: Colors.white54, fontSize: 12)),
+              ],
+            ),
+          ),
+        ),
+      ],
     );
   }
 

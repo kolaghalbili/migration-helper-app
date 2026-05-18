@@ -8,7 +8,11 @@ class ApiService {
   final String baseUrl = "http://127.0.0.1:8000/api";
 
   String? _getToken() {
-    return html.window.localStorage['access'];
+    try {
+      return html.window.localStorage['access'];
+    } catch (_) {
+      return null;
+    }
   }
 
   Future<List<Helper>> getHelpers({
@@ -39,6 +43,20 @@ class ApiService {
       return data.map((json) => Helper.fromJson(json)).toList();
     } catch (_) {
       return [];
+    }
+  }
+
+  Future<Map<String, dynamic>?> createConversation(int helperId) async {
+    try {
+      final token = _getToken();
+      final response = await _dio.post(
+        '$baseUrl/conversations/create/',
+        data: {'helper_id': helperId},
+        options: Options(headers: {'Authorization': 'Bearer $token'}),
+      );
+      return response.data as Map<String, dynamic>;
+    } catch (_) {
+      return null;
     }
   }
 }
