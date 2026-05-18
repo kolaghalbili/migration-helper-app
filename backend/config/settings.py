@@ -22,6 +22,7 @@ INSTALLED_APPS = [
     'channels',
     'users',
     'chat',
+    'community',
 ]
 
 MIDDLEWARE = [
@@ -45,7 +46,7 @@ DATABASES = {
         'ENGINE': 'django.db.backends.postgresql',
         'NAME': 'borderline_db',
         'USER': 'postgres',
-        'PASSWORD': 'asal2000',
+        'PASSWORD': 'reza123321',
         'HOST': 'localhost',
         'PORT': '5432',
     }
