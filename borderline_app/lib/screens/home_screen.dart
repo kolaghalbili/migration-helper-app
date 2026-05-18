@@ -3,11 +3,13 @@ import 'package:cached_network_image/cached_network_image.dart';
 import '../services/auth_service.dart';
 import '../services/api_service.dart';
 import '../models/helper_model.dart';
+import '../models/filter_params.dart';
 import 'login_screen.dart';
 import 'helper_detail_screen.dart';
 import 'helper_dashboard_screen.dart';
 import 'map_screen.dart';
 import 'edit_profile_screen.dart';
+import 'search_filter_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -28,12 +30,7 @@ class _HomeScreenState extends State<HomeScreen> {
   // Current user (for role routing + nationality/language matching)
   Map<String, dynamic>? _me;
 
-  // Active filters
-  double _filterMaxRate = 200;
-  double _filterMinRating = 0;
-  bool _filterVerifiedOnly = false;
-  bool _filterNationalityMatch = false;
-  bool _filterLanguageMatch = false;
+  FilterParams _filters = FilterParams.defaults;
 
   final List<String> _specialties = [
     'All', 'Banking', 'Housing', 'SIM Card',
@@ -58,10 +55,11 @@ class _HomeScreenState extends State<HomeScreen> {
     }
     setState(() {
       _me = me;
-      // Pre-apply scope preference from user profile
       final scope = me?['helper_scope'] as String? ?? 'any';
-      _filterNationalityMatch = scope == 'same_nationality';
-      _filterLanguageMatch    = scope == 'language_match';
+      _filters = FilterParams(
+        nationalityMatch: scope == 'same_nationality' ? 'same' : 'any',
+        languageMatch: scope == 'language_match',
+      );
     });
     await _loadHelpers();
   }
@@ -97,22 +95,52 @@ class _HomeScreenState extends State<HomeScreen> {
           return false;
         }
 
+        // City filter
+        if (_filters.city.isNotEmpty &&
+            !h.city.toLowerCase().contains(_filters.city.toLowerCase())) {
+          return false;
+        }
+
+        // Category filter
+        if (_filters.selectedCategory.isNotEmpty &&
+            !h.specialties.any((s) =>
+                s.name.toLowerCase().contains(
+                    _filters.selectedCategory.toLowerCase()))) {
+          return false;
+        }
+
         // Max hourly rate
-        if (h.hourlyRate != null && h.hourlyRate! > _filterMaxRate) return false;
+        if (h.hourlyRate != null && h.hourlyRate! > _filters.maxRate) return false;
 
         // Min rating
-        if (_filterMinRating > 0 && h.ratingAvg < _filterMinRating) return false;
+        if (_filters.minRating > 0 && h.ratingAvg < _filters.minRating) return false;
 
         // Verified only
-        if (_filterVerifiedOnly && !h.isVerified) return false;
+        if (_filters.verifiedOnly && !h.isVerified) return false;
 
         // Nationality match
-        if (_filterNationalityMatch &&
+        if (_filters.nationalityMatch == 'same' &&
             myNationality.isNotEmpty &&
             h.nationality.toLowerCase() != myNationality) { return false; }
+        if (_filters.nationalityMatch == 'arabic') {
+          final helperLangs = h.languages.map((l) => l.toLowerCase()).toSet();
+          final helperNat = h.nationality.toLowerCase();
+          if (!helperLangs.contains('arabic') &&
+              !helperNat.contains('arab') &&
+              !helperNat.contains('saudi') &&
+              !helperNat.contains('egypt') &&
+              !helperNat.contains('syria') &&
+              !helperNat.contains('iraq') &&
+              !helperNat.contains('jordan') &&
+              !helperNat.contains('lebanon') &&
+              !helperNat.contains('morocco') &&
+              !helperNat.contains('tunisia') &&
+              !helperNat.contains('libya') &&
+              !helperNat.contains('algeria')) { return false; }
+        }
 
         // Language match — at least one common language
-        if (_filterLanguageMatch && myLanguages.isNotEmpty) {
+        if (_filters.languageMatch && myLanguages.isNotEmpty) {
           final helperLangs =
               h.languages.map((l) => l.toLowerCase()).toSet();
           if (helperLangs.intersection(myLanguages).isEmpty) return false;
@@ -123,224 +151,22 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
-  int get _activeFilterCount {
-    int count = 0;
-    if (_filterMaxRate < 200) count++;
-    if (_filterMinRating > 0) count++;
-    if (_filterVerifiedOnly) count++;
-    if (_filterNationalityMatch) count++;
-    if (_filterLanguageMatch) count++;
-    return count;
-  }
+  int get _activeFilterCount => _filters.activeCount;
 
-  void _showFilterSheet() {
-    // Temp values so the sheet can be cancelled
-    double tmpMaxRate        = _filterMaxRate;
-    double tmpMinRating      = _filterMinRating;
-    bool   tmpVerifiedOnly   = _filterVerifiedOnly;
-    bool   tmpNatMatch       = _filterNationalityMatch;
-    bool   tmpLangMatch      = _filterLanguageMatch;
-
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (_) => StatefulBuilder(
-        builder: (ctx, setModal) => Container(
-          padding: EdgeInsets.fromLTRB(
-              20, 20, 20, MediaQuery.of(ctx).viewInsets.bottom + 20),
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  const Text('Filter Helpers',
-                      style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFF1A3A5C))),
-                  const Spacer(),
-                  TextButton(
-                    onPressed: () {
-                      setModal(() {
-                        tmpMaxRate      = 200;
-                        tmpMinRating    = 0;
-                        tmpVerifiedOnly = false;
-                        tmpNatMatch     = false;
-                        tmpLangMatch    = false;
-                      });
-                    },
-                    child: const Text('Clear all',
-                        style: TextStyle(color: Color(0xFFE8944A))),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-
-              // Max hourly rate
-              Row(
-                children: [
-                  const Text('Max rate:',
-                      style: TextStyle(
-                          fontWeight: FontWeight.w600,
-                          color: Color(0xFF1A3A5C))),
-                  const Spacer(),
-                  Text(
-                    tmpMaxRate >= 200
-                        ? 'Any'
-                        : '€${tmpMaxRate.toInt()}/h',
-                    style: const TextStyle(
-                        color: Color(0xFFE8944A), fontWeight: FontWeight.bold),
-                  ),
-                ],
-              ),
-              Slider(
-                value: tmpMaxRate,
-                min: 0,
-                max: 200,
-                divisions: 20,
-                activeColor: const Color(0xFFE8944A),
-                onChanged: (v) => setModal(() => tmpMaxRate = v),
-              ),
-
-              const SizedBox(height: 8),
-
-              // Min rating
-              const Text('Minimum rating:',
-                  style: TextStyle(
-                      fontWeight: FontWeight.w600, color: Color(0xFF1A3A5C))),
-              const SizedBox(height: 8),
-              Row(
-                children: List.generate(5, (i) {
-                  final star = i + 1;
-                  final selected = tmpMinRating >= star;
-                  return Expanded(
-                    child: GestureDetector(
-                      onTap: () => setModal(() =>
-                          tmpMinRating = tmpMinRating == star.toDouble()
-                              ? 0
-                              : star.toDouble()),
-                      child: Container(
-                        margin: EdgeInsets.only(right: i < 4 ? 6 : 0),
-                        padding: const EdgeInsets.symmetric(vertical: 10),
-                        decoration: BoxDecoration(
-                          color: selected
-                              ? Colors.amber
-                              : const Color(0xFFF5F0EB),
-                          borderRadius: BorderRadius.circular(10),
-                          border: Border.all(
-                              color: selected
-                                  ? Colors.amber
-                                  : const Color(0xFFDCE5ED)),
-                        ),
-                        child: Column(
-                          children: [
-                            Icon(Icons.star,
-                                size: 18,
-                                color: selected ? Colors.white : Colors.amber),
-                            Text('$star',
-                                style: TextStyle(
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w600,
-                                    color: selected
-                                        ? Colors.white
-                                        : const Color(0xFF1A3A5C))),
-                          ],
-                        ),
-                      ),
-                    ),
-                  );
-                }),
-              ),
-
-              const SizedBox(height: 16),
-
-              // Toggle rows
-              _filterToggle(
-                'Verified helpers only',
-                Icons.verified_outlined,
-                tmpVerifiedOnly,
-                (v) => setModal(() => tmpVerifiedOnly = v),
-              ),
-              const SizedBox(height: 10),
-              _filterToggle(
-                'Same nationality as me',
-                Icons.flag_outlined,
-                tmpNatMatch,
-                (v) => setModal(() {
-                  tmpNatMatch = v;
-                  if (v) { tmpLangMatch = false; }
-                }),
-              ),
-              const SizedBox(height: 10),
-              _filterToggle(
-                'Speaks my language(s)',
-                Icons.translate_outlined,
-                tmpLangMatch,
-                (v) => setModal(() {
-                  tmpLangMatch = v;
-                  if (v) { tmpNatMatch = false; }
-                }),
-              ),
-
-              const SizedBox(height: 24),
-              SizedBox(
-                width: double.infinity,
-                height: 50,
-                child: ElevatedButton(
-                  onPressed: () {
-                    setState(() {
-                      _filterMaxRate        = tmpMaxRate;
-                      _filterMinRating      = tmpMinRating;
-                      _filterVerifiedOnly   = tmpVerifiedOnly;
-                      _filterNationalityMatch = tmpNatMatch;
-                      _filterLanguageMatch  = tmpLangMatch;
-                    });
-                    _applyFilters();
-                    Navigator.pop(ctx);
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF1A3A5C),
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14)),
-                  ),
-                  child: const Text('Apply Filters',
-                      style: TextStyle(
-                          fontSize: 16, fontWeight: FontWeight.bold)),
-                ),
-              ),
-            ],
-          ),
+  Future<void> _openFilterScreen() async {
+    final result = await Navigator.push<FilterParams>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => SearchFilterScreen(
+          initial:      _filters,
+          totalHelpers: _filtered.length,
         ),
       ),
     );
-  }
-
-  Widget _filterToggle(
-      String label, IconData icon, bool value, ValueChanged<bool> onChanged) {
-    return Row(
-      children: [
-        Icon(icon, color: const Color(0xFF1A3A5C), size: 18),
-        const SizedBox(width: 10),
-        Expanded(
-          child: Text(label,
-              style: const TextStyle(
-                  color: Color(0xFF1A3A5C), fontWeight: FontWeight.w500)),
-        ),
-        Switch(
-          value: value,
-          activeThumbColor: const Color(0xFFE8944A),
-          activeTrackColor: const Color(0xFFE8944A).withValues(alpha: 0.4),
-          onChanged: onChanged,
-        ),
-      ],
-    );
+    if (result != null) {
+      setState(() => _filters = result);
+      _applyFilters();
+    }
   }
 
   @override
@@ -437,7 +263,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 icon: const Icon(Icons.tune_outlined,
                     color: Color(0xFF1A3A5C), size: 26),
                 tooltip: 'Filter',
-                onPressed: _showFilterSheet,
+                onPressed: _openFilterScreen,
               ),
               if (_activeFilterCount > 0)
                 Positioned(
