@@ -8,6 +8,7 @@ import 'edit_profile_screen.dart';
 import 'inbox_screen.dart';
 import 'map_screen.dart';
 import 'chat_screen.dart';
+import 'request_intake_screen.dart';
 
 class HelperDashboardScreen extends StatefulWidget {
   const HelperDashboardScreen({super.key});
@@ -451,13 +452,24 @@ class _HelperDashboardScreenState extends State<HelperDashboardScreen>
                     const SizedBox(width: 8),
                     Expanded(
                       child: ElevatedButton(
-                        onPressed: () => _updateStatus(req, 'accepted'),
+                        onPressed: () async {
+                          final result = await Navigator.push<String>(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) =>
+                                  RequestIntakeScreen(request: req),
+                            ),
+                          );
+                          if (result == 'accepted' || result == 'declined') {
+                            _load();
+                          }
+                        },
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFFE8944A),
                           foregroundColor: Colors.white,
                           padding: const EdgeInsets.symmetric(vertical: 8),
                         ),
-                        child: const Text('Accept'),
+                        child: const Text('Review →'),
                       ),
                     ),
                   ],

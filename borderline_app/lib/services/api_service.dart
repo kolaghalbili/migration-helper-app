@@ -59,4 +59,32 @@ class ApiService {
       return null;
     }
   }
+
+  Future<bool> updateRequestStatus(int requestId, String newStatus) async {
+    try {
+      final token = _getToken();
+      await _dio.patch(
+        '$baseUrl/requests/$requestId/status/',
+        data: {'status': newStatus},
+        options: Options(headers: {'Authorization': 'Bearer $token'}),
+      );
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Future<int?> getOrCreateConversation(int userId) async {
+    try {
+      final token = _getToken();
+      final r = await _dio.post(
+        '$baseUrl/conversations/create/',
+        data: {'user_id': userId},
+        options: Options(headers: {'Authorization': 'Bearer $token'}),
+      );
+      return r.data['id'] as int?;
+    } catch (_) {
+      return null;
+    }
+  }
 }
