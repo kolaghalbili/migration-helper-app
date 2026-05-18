@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 // ignore: avoid_web_libraries_in_flutter
 import 'dart:html' as html;
 import 'screens/login_screen.dart';
-import 'screens/home_screen.dart';
+import 'screens/main_shell.dart';
 import 'screens/onboarding_screen.dart';
 import 'services/auth_service.dart';
 
@@ -54,7 +54,7 @@ class _SplashRouterState extends State<SplashRouter> {
 
     if (isLoggedIn) {
       Navigator.pushReplacement(context,
-          MaterialPageRoute(builder: (_) => const HomeScreen()));
+          MaterialPageRoute(builder: (_) => const MainShell()));
     } else if (seenOnboarding) {
       Navigator.pushReplacement(context,
           MaterialPageRoute(builder: (_) => const LoginScreen()));

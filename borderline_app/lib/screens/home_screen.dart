@@ -6,9 +6,7 @@ import '../models/helper_model.dart';
 import 'login_screen.dart';
 import 'helper_detail_screen.dart';
 import 'helper_dashboard_screen.dart';
-import 'newcomer_profile_screen.dart';
 import 'map_screen.dart';
-import 'inbox_screen.dart';
 import 'edit_profile_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -361,24 +359,6 @@ class _HomeScreenState extends State<HomeScreen> {
               context,
               MaterialPageRoute(builder: (_) => const HelperMapScreen()),
             ),
-          ),
-          IconButton(
-            icon: const Icon(Icons.inbox, color: Colors.white),
-            onPressed: () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const InboxScreen()),
-            ),
-          ),
-          IconButton(
-            icon: const Icon(Icons.person_outline, color: Colors.white),
-            tooltip: 'My Profile',
-            onPressed: () async {
-              await Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const NewcomerProfileScreen()),
-              );
-              _init();
-            },
           ),
           IconButton(
             icon: const Icon(Icons.manage_accounts_outlined, color: Colors.white),
