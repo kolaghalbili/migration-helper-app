@@ -24,6 +24,17 @@ class UserImageSerializer(serializers.ModelSerializer):
         return None
 
 
+class HelperBadgeSerializer(serializers.ModelSerializer):
+    label = serializers.SerializerMethodField()
+
+    class Meta:
+        model = HelperBadge
+        fields = ['id', 'badge_type', 'label', 'awarded_at']
+
+    def get_label(self, obj):
+        return obj.get_badge_type_display()
+
+
 class RegisterSerializer(serializers.ModelSerializer):
     password  = serializers.CharField(write_only=True, validators=[validate_password])
     password2 = serializers.CharField(write_only=True)
@@ -80,17 +91,6 @@ class UserProfileSerializer(serializers.ModelSerializer):
         if specialty_ids is not None:
             instance.specialties.set(specialty_ids)
         return instance
-
-
-class HelperBadgeSerializer(serializers.ModelSerializer):
-    label = serializers.SerializerMethodField()
-
-    class Meta:
-        model = HelperBadge
-        fields = ['id', 'badge_type', 'label', 'awarded_at']
-
-    def get_label(self, obj):
-        return obj.get_badge_type_display()
 
 
 class PublicHelperSerializer(serializers.ModelSerializer):
