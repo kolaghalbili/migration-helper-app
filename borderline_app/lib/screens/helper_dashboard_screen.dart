@@ -6,6 +6,7 @@ import '../models/helper_model.dart';
 import 'login_screen.dart';
 import 'edit_profile_screen.dart';
 import 'inbox_screen.dart';
+import 'map_screen.dart';
 import 'chat_screen.dart';
 
 class HelperDashboardScreen extends StatefulWidget {
@@ -27,7 +28,7 @@ class _HelperDashboardScreenState extends State<HelperDashboardScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(length: 4, vsync: this);
     _load();
   }
 
@@ -94,6 +95,12 @@ class _HelperDashboardScreenState extends State<HelperDashboardScreen>
             style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
         actions: [
           IconButton(
+            icon: const Icon(Icons.map_outlined, color: Colors.white),
+            tooltip: 'Map view',
+            onPressed: () => Navigator.push(
+                context, MaterialPageRoute(builder: (_) => const HelperMapScreen())),
+          ),
+          IconButton(
             icon: const Icon(Icons.inbox, color: Colors.white),
             onPressed: () => Navigator.push(
                 context, MaterialPageRoute(builder: (_) => const InboxScreen())),
@@ -129,6 +136,7 @@ class _HelperDashboardScreenState extends State<HelperDashboardScreen>
             Tab(text: 'New (${_pending.length})'),
             Tab(text: 'Active (${_accepted.length})'),
             Tab(text: 'Done (${_done.length})'),
+            const Tab(text: 'Badges'),
           ],
         ),
       ),
@@ -146,6 +154,7 @@ class _HelperDashboardScreenState extends State<HelperDashboardScreen>
                         _buildRequestList(_pending, showActions: true),
                         _buildRequestList(_accepted, showDone: true),
                         _buildRequestList(_done),
+                        _buildBadgesTab(),
                       ],
                     ),
                   ),
@@ -513,6 +522,124 @@ class _HelperDashboardScreenState extends State<HelperDashboardScreen>
       ),
     );
   }
+
+  Widget _buildBadgesTab() {
+    const allBadges = [
+      {'type': 'banking',    'icon': '🏦', 'label': 'Banking Pro',       'desc': 'Expert at opening accounts & banking setup'},
+      {'type': 'housing',    'icon': '🏠', 'label': 'Housing Wiz',        'desc': 'Skilled at finding apartments & contracts'},
+      {'type': 'sim_card',   'icon': '📱', 'label': 'SIM Card Expert',    'desc': 'Knows every carrier & prepaid plan'},
+      {'type': 'legal',      'icon': '📄', 'label': 'Legal Guide',        'desc': 'Helps with permits, registration & tax'},
+      {'type': 'language',   'icon': '💬', 'label': 'Language Coach',     'desc': 'Translation & language support specialist'},
+      {'type': 'job_search', 'icon': '💼', 'label': 'Job Search Pro',     'desc': 'CV writing, interviews & job listings'},
+      {'type': 'community',  'icon': '🌍', 'label': 'Community Builder',  'desc': 'Connects newcomers with local circles'},
+    ];
+
+    final earnedTypes = (_me?['badges'] as List? ?? [])
+        .map((b) => (b as Map<String, dynamic>)['badge_type'] as String)
+        .toSet();
+
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        if (earnedTypes.isNotEmpty) ...[
+          const Text('Your Verified Badges',
+              style: TextStyle(
+                  fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF1A3A5C))),
+          const SizedBox(height: 4),
+          const Text('Awarded by the Borderline team after review.',
+              style: TextStyle(fontSize: 12, color: Color(0xFF7A8B9A))),
+          const SizedBox(height: 14),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: allBadges
+                .where((b) => earnedTypes.contains(b['type']))
+                .map((b) => _earnedBadgeChip(b))
+                .toList(),
+          ),
+          const SizedBox(height: 28),
+        ],
+        Text(
+          earnedTypes.isEmpty ? 'Available Badges' : 'More to Earn',
+          style: const TextStyle(
+              fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF1A3A5C)),
+        ),
+        const SizedBox(height: 4),
+        const Text(
+          'Complete sessions in these areas to apply for verification.',
+          style: TextStyle(fontSize: 12, color: Color(0xFF7A8B9A)),
+        ),
+        const SizedBox(height: 14),
+        ...allBadges
+            .where((b) => !earnedTypes.contains(b['type']))
+            .map((b) => _unearnedBadgeRow(b)),
+      ],
+    );
+  }
+
+  Widget _earnedBadgeChip(Map<String, String> b) => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        decoration: BoxDecoration(
+          color: const Color(0xFF2E8B8B).withValues(alpha: 0.10),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: const Color(0xFF2E8B8B).withValues(alpha: 0.4)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(b['icon']!, style: const TextStyle(fontSize: 18)),
+            const SizedBox(width: 8),
+            Text(b['label']!,
+                style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF2E8B8B),
+                    fontSize: 13)),
+            const SizedBox(width: 6),
+            const Icon(Icons.verified, size: 14, color: Color(0xFF2E8B8B)),
+          ],
+        ),
+      );
+
+  Widget _unearnedBadgeRow(Map<String, String> b) => Container(
+        margin: const EdgeInsets.only(bottom: 10),
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: const Color(0xFFDCE5ED)),
+        ),
+        child: Row(
+          children: [
+            Text(b['icon']!, style: const TextStyle(fontSize: 22)),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(b['label']!,
+                      style: const TextStyle(
+                          fontWeight: FontWeight.w600, color: Color(0xFF1A3A5C))),
+                  Text(b['desc']!,
+                      style: const TextStyle(
+                          fontSize: 12, color: Color(0xFF7A8B9A))),
+                ],
+              ),
+            ),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF5F0EB),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Text('Not yet',
+                  style: TextStyle(
+                      fontSize: 11,
+                      color: Color(0xFF7A8B9A),
+                      fontWeight: FontWeight.w500)),
+            ),
+          ],
+        ),
+      );
 
   String _categoryIcon(String category) {
     const icons = {

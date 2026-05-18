@@ -106,6 +106,16 @@ class _HelperDetailScreenState extends State<HelperDetailScreen> {
                     ),
                     const SizedBox(height: 24),
                   ],
+                  if (h.badges.isNotEmpty) ...[
+                    _sectionTitle('Verified Expertise'),
+                    const SizedBox(height: 10),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: h.badges.map((b) => _badgeChip(b)).toList(),
+                    ),
+                    const SizedBox(height: 24),
+                  ],
                   _buildActionButtons(),
                   const SizedBox(height: 32),
                   if (_reviews.isNotEmpty) ...[
@@ -324,6 +334,30 @@ class _HelperDetailScreenState extends State<HelperDetailScreen> {
         ),
         child: Text('${s.icon} ${s.name}',
             style: const TextStyle(color: Color(0xFFE8944A), fontWeight: FontWeight.w600)),
+      );
+
+  Widget _badgeChip(HelperBadge b) => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        decoration: BoxDecoration(
+          color: const Color(0xFF2E8B8B).withValues(alpha: 0.10),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: const Color(0xFF2E8B8B).withValues(alpha: 0.4)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(HelperBadge.iconFor(b.badgeType),
+                style: const TextStyle(fontSize: 14)),
+            const SizedBox(width: 6),
+            Text(b.label.replaceFirst(RegExp(r'.+\s'), ''),
+                style: const TextStyle(
+                    color: Color(0xFF2E8B8B),
+                    fontWeight: FontWeight.w600,
+                    fontSize: 13)),
+            const SizedBox(width: 6),
+            const Icon(Icons.verified, size: 14, color: Color(0xFF2E8B8B)),
+          ],
+        ),
       );
 
   // ── Action buttons ────────────────────────────────────────────────────────

@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from django.contrib.auth.password_validation import validate_password
-from .models import User, Specialty, UserImage, Review, HelpRequest
+from .models import User, Specialty, UserImage, Review, HelpRequest, HelperBadge
 
 
 class SpecialtySerializer(serializers.ModelSerializer):
@@ -58,6 +58,7 @@ class UserProfileSerializer(serializers.ModelSerializer):
         required=False,
     )
     profile_images = UserImageSerializer(many=True, read_only=True)
+    badges         = HelperBadgeSerializer(many=True, read_only=True)
 
     class Meta:
         model = User
@@ -66,7 +67,8 @@ class UserProfileSerializer(serializers.ModelSerializer):
             'phone', 'country', 'city', 'nationality', 'origin_country', 'languages',
             'latitude', 'longitude', 'location_tracking_enabled', 'location_updated_at',
             'specialties', 'specialty_ids', 'hourly_rate', 'is_available', 'is_verified',
-            'rating_avg', 'total_reviews', 'total_sessions', 'profile_images', 'helper_scope',
+            'rating_avg', 'total_reviews', 'total_sessions', 'profile_images',
+            'helper_scope', 'badges',
         ]
         read_only_fields = [
             'id', 'email', 'role', 'is_verified', 'rating_avg', 'total_reviews', 'total_sessions',
@@ -80,9 +82,21 @@ class UserProfileSerializer(serializers.ModelSerializer):
         return instance
 
 
+class HelperBadgeSerializer(serializers.ModelSerializer):
+    label = serializers.SerializerMethodField()
+
+    class Meta:
+        model = HelperBadge
+        fields = ['id', 'badge_type', 'label', 'awarded_at']
+
+    def get_label(self, obj):
+        return obj.get_badge_type_display()
+
+
 class PublicHelperSerializer(serializers.ModelSerializer):
     specialties    = SpecialtySerializer(many=True, read_only=True)
     profile_images = UserImageSerializer(many=True, read_only=True)
+    badges         = HelperBadgeSerializer(many=True, read_only=True)
 
     class Meta:
         model = User
@@ -90,7 +104,7 @@ class PublicHelperSerializer(serializers.ModelSerializer):
             'id', 'first_name', 'last_name', 'avatar', 'bio', 'city', 'country',
             'nationality', 'origin_country', 'languages', 'specialties', 'hourly_rate',
             'is_available', 'rating_avg', 'total_reviews', 'total_sessions', 'is_verified',
-            'latitude', 'longitude', 'profile_images',
+            'latitude', 'longitude', 'profile_images', 'badges',
         ]
 
 

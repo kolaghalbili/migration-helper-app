@@ -9,6 +9,7 @@ DEBUG = True
 ALLOWED_HOSTS = ['*']
 
 INSTALLED_APPS = [
+    'daphne',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -44,7 +45,7 @@ DATABASES = {
         'ENGINE': 'django.db.backends.postgresql',
         'NAME': 'borderline_db',
         'USER': 'postgres',
-        'PASSWORD': 'reza123321',
+        'PASSWORD': 'asal2000',
         'HOST': 'localhost',
         'PORT': '5432',
     }

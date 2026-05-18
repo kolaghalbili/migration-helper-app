@@ -89,6 +89,40 @@ class Specialty {
       );
 }
 
+class HelperBadge {
+  final int id;
+  final String badgeType;
+  final String label;
+  final String awardedAt;
+
+  HelperBadge({
+    required this.id,
+    required this.badgeType,
+    required this.label,
+    required this.awardedAt,
+  });
+
+  factory HelperBadge.fromJson(Map<String, dynamic> json) => HelperBadge(
+        id:         json['id'] ?? 0,
+        badgeType:  json['badge_type'] ?? '',
+        label:      json['label'] ?? '',
+        awardedAt:  json['awarded_at'] ?? '',
+      );
+
+  static String iconFor(String badgeType) {
+    const icons = {
+      'banking':   '🏦',
+      'housing':   '🏠',
+      'sim_card':  '📱',
+      'legal':     '📄',
+      'language':  '💬',
+      'job_search':'💼',
+      'community': '🌍',
+    };
+    return icons[badgeType] ?? '✅';
+  }
+}
+
 class ProfileImage {
   final int id;
   final String? imageUrl;
@@ -127,6 +161,7 @@ class Helper {
   final double? hourlyRate;
   final List<Specialty> specialties;
   final List<ProfileImage> profileImages;
+  final List<HelperBadge> badges;
   final double? latitude;
   final double? longitude;
   final String role;
@@ -148,6 +183,7 @@ class Helper {
     this.hourlyRate,
     required this.specialties,
     this.profileImages = const [],
+    this.badges = const [],
     this.latitude,
     this.longitude,
     this.role = 'helper',
@@ -185,6 +221,9 @@ class Helper {
             .toList(),
         profileImages: (json['profile_images'] as List? ?? [])
             .map((i) => ProfileImage.fromJson(i as Map<String, dynamic>))
+            .toList(),
+        badges: (json['badges'] as List? ?? [])
+            .map((b) => HelperBadge.fromJson(b as Map<String, dynamic>))
             .toList(),
         latitude: json['latitude'] != null
             ? double.tryParse(json['latitude'].toString())

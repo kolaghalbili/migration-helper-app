@@ -7,6 +7,7 @@ import 'login_screen.dart';
 import 'helper_detail_screen.dart';
 import 'helper_dashboard_screen.dart';
 import 'newcomer_profile_screen.dart';
+import 'map_screen.dart';
 import 'inbox_screen.dart';
 import 'edit_profile_screen.dart';
 
@@ -90,7 +91,7 @@ class _HomeScreenState extends State<HomeScreen> {
         // Text search
         if (query.isNotEmpty &&
             !h.fullName.toLowerCase().contains(query) &&
-            !h.city.toLowerCase().contains(query)) return false;
+            !h.city.toLowerCase().contains(query)) { return false; }
 
         // Specialty chip
         if (_selectedSpecialty != 'All' &&
@@ -110,7 +111,7 @@ class _HomeScreenState extends State<HomeScreen> {
         // Nationality match
         if (_filterNationalityMatch &&
             myNationality.isNotEmpty &&
-            h.nationality.toLowerCase() != myNationality) return false;
+            h.nationality.toLowerCase() != myNationality) { return false; }
 
         // Language match — at least one common language
         if (_filterLanguageMatch && myLanguages.isNotEmpty) {
@@ -354,6 +355,14 @@ class _HomeScreenState extends State<HomeScreen> {
             style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
         actions: [
           IconButton(
+            icon: const Icon(Icons.map_outlined, color: Colors.white),
+            tooltip: 'Map view',
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const HelperMapScreen()),
+            ),
+          ),
+          IconButton(
             icon: const Icon(Icons.inbox, color: Colors.white),
             onPressed: () => Navigator.push(
               context,
@@ -571,6 +580,24 @@ class _HomeScreenState extends State<HomeScreen> {
                         const SizedBox(width: 6),
                         const Icon(Icons.verified,
                             size: 16, color: Color(0xFF2E8B8B)),
+                      ],
+                      if (helper.badges.isNotEmpty) ...[
+                        const SizedBox(width: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF2E8B8B).withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            '${helper.badges.length} badge${helper.badges.length > 1 ? 's' : ''}',
+                            style: const TextStyle(
+                                fontSize: 10,
+                                color: Color(0xFF2E8B8B),
+                                fontWeight: FontWeight.w600),
+                          ),
+                        ),
                       ]
                     ],
                   ),

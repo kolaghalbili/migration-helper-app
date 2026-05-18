@@ -118,6 +118,32 @@ class UserImage(models.Model):
         return f'{self.user.email} - image #{self.order}'
 
 
+class HelperBadge(models.Model):
+    class BadgeType(models.TextChoices):
+        BANKING   = 'banking',    '🏦 Banking Pro'
+        HOUSING   = 'housing',    '🏠 Housing Wiz'
+        SIM_CARD  = 'sim_card',   '📱 SIM Card Expert'
+        LEGAL     = 'legal',      '📄 Legal Guide'
+        LANGUAGE  = 'language',   '💬 Language Coach'
+        JOB       = 'job_search', '💼 Job Search Pro'
+        COMMUNITY = 'community',  '🌍 Community Builder'
+
+    helper     = models.ForeignKey(User, on_delete=models.CASCADE, related_name='badges')
+    badge_type = models.CharField(max_length=30, choices=BadgeType.choices)
+    awarded_by = models.ForeignKey(
+        User, on_delete=models.SET_NULL, null=True, blank=True, related_name='badges_awarded'
+    )
+    awarded_at = models.DateTimeField(auto_now_add=True)
+    note       = models.TextField(blank=True)
+
+    class Meta:
+        unique_together = ('helper', 'badge_type')
+        ordering = ['badge_type']
+
+    def __str__(self):
+        return f'{self.helper} — {self.get_badge_type_display()}'
+
+
 class Review(models.Model):
     reviewer   = models.ForeignKey(User, on_delete=models.CASCADE, related_name='reviews_given')
     reviewee   = models.ForeignKey(User, on_delete=models.CASCADE, related_name='reviews_received')

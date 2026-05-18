@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
 from django.contrib.auth.forms import UserCreationForm, UserChangeForm
-from .models import User
+from .models import User, Specialty, HelperBadge, Review, HelpRequest
 
 # ۱. ساخت فرم اختصاصی برای اضافه کردن کاربر با ایمیل
 class CustomUserCreationForm(UserCreationForm):
@@ -39,3 +39,28 @@ class CustomUserAdmin(UserAdmin):
     )
 
 admin.site.register(User, CustomUserAdmin)
+
+
+@admin.register(HelperBadge)
+class HelperBadgeAdmin(admin.ModelAdmin):
+    list_display  = ['helper', 'badge_type', 'awarded_by', 'awarded_at']
+    list_filter   = ['badge_type']
+    search_fields = ['helper__email', 'helper__first_name', 'helper__last_name']
+    raw_id_fields = ['helper', 'awarded_by']
+
+
+@admin.register(Specialty)
+class SpecialtyAdmin(admin.ModelAdmin):
+    list_display = ['name', 'icon', 'is_active']
+
+
+@admin.register(Review)
+class ReviewAdmin(admin.ModelAdmin):
+    list_display = ['reviewer', 'reviewee', 'rating', 'created_at']
+    list_filter  = ['rating']
+
+
+@admin.register(HelpRequest)
+class HelpRequestAdmin(admin.ModelAdmin):
+    list_display = ['id', 'newcomer', 'helper', 'category', 'status', 'created_at']
+    list_filter  = ['status', 'category']
