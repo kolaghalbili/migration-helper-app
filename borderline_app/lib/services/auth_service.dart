@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'package:image_picker/image_picker.dart';
 // ignore: avoid_web_libraries_in_flutter
 import 'dart:html' as html;
@@ -38,6 +39,16 @@ class AuthService {
     } catch (e) {
       return false;
     }
+  }
+
+  /// Returns true if the email is not yet registered, false if taken.
+  /// Throws on network error so callers can distinguish "taken" from "offline".
+  Future<bool> checkEmailAvailable(String email) async {
+    final response = await _dio.post(
+      '$baseUrl/auth/check-email/',
+      data: {'email': email.trim().toLowerCase()},
+    );
+    return response.data['available'] == true;
   }
 
   Future<bool> register({
@@ -95,6 +106,21 @@ class AuthService {
   }
 
   Future<bool> isLoggedIn() async => _accessToken != null;
+
+  // ── Verification ───────────────────────────────────────────────────────────
+
+  Future<Map<String, dynamic>?> getVerificationStatus() async {
+    try {
+      final response = await _dio.get(
+        '$baseUrl/users/me/verification-status/',
+        options: _authHeader,
+      );
+      return response.data as Map<String, dynamic>;
+    } catch (e) {
+      debugPrint('getVerificationStatus error: $e');
+      return null;
+    }
+  }
 
   // ── Profile images ─────────────────────────────────────────────────────────
 
@@ -247,6 +273,17 @@ class AuthService {
       return response.statusCode == 200;
     } catch (_) {
       return false;
+    }
+  }
+
+  // ── Specialties ────────────────────────────────────────────────────────────
+
+  Future<List<Map<String, dynamic>>> getSpecialties() async {
+    try {
+      final response = await _dio.get('$baseUrl/specialties/');
+      return List<Map<String, dynamic>>.from(response.data);
+    } catch (_) {
+      return [];
     }
   }
 

@@ -5,12 +5,23 @@ from rest_framework.response import Response
 from rest_framework_simplejwt.views import TokenObtainPairView
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
-from .models import User, Specialty, UserImage, Review, HelpRequest
+from .models import User, Specialty, UserImage, Review, HelpRequest, Notification
 from .serializers import (
     RegisterSerializer, UserProfileSerializer, PublicHelperSerializer,
     SpecialtySerializer, UserImageSerializer, PublicUserSerializer,
     LocationUpdateSerializer, ReviewSerializer, HelpRequestSerializer,
+    NotificationSerializer,
 )
+
+
+def _push_notification(recipient, notif_type, title, body='', related_request=None):
+    Notification.objects.create(
+        recipient=recipient,
+        notif_type=notif_type,
+        title=title,
+        body=body,
+        related_request=related_request,
+    )
 
 
 def _haversine_km(lat1, lon1, lat2, lon2):
@@ -28,6 +39,18 @@ class RegisterView(generics.CreateAPIView):
     queryset = User.objects.all()
     serializer_class = RegisterSerializer
     permission_classes = [permissions.AllowAny]
+
+
+class CheckEmailView(APIView):
+    """POST /auth/check-email/  — returns {available: bool}. No auth required."""
+    permission_classes = [permissions.AllowAny]
+
+    def post(self, request):
+        email = request.data.get('email', '').strip().lower()
+        if not email:
+            return Response({'error': 'Email is required.'}, status=status.HTTP_400_BAD_REQUEST)
+        taken = User.objects.filter(email__iexact=email).exists()
+        return Response({'available': not taken})
 
 
 class LoginView(TokenObtainPairView):
@@ -271,6 +294,17 @@ class HelpRequestView(APIView):
         serializer = HelpRequestSerializer(data=request.data, context={'request': request})
         serializer.is_valid(raise_exception=True)
         hr = serializer.save(newcomer=request.user)
+
+        if hr.helper:
+            newcomer_name = f'{request.user.first_name} {request.user.last_name}'.strip()
+            _push_notification(
+                recipient=hr.helper,
+                notif_type='new_request',
+                title='New Help Request',
+                body=f'{newcomer_name} needs help with {hr.category}',
+                related_request=hr,
+            )
+
         return Response(
             HelpRequestSerializer(hr, context={'request': request}).data,
             status=status.HTTP_201_CREATED,
@@ -302,4 +336,166 @@ class HelpRequestStatusView(APIView):
 
         hr.status = new_status
         hr.save(update_fields=['status', 'updated_at'])
+
+        helper_name   = f'{hr.helper.first_name} {hr.helper.last_name}'.strip() if hr.helper else 'Your helper'
+        newcomer_name = f'{hr.newcomer.first_name} {hr.newcomer.last_name}'.strip()
+
+        if new_status == 'accepted':
+            _push_notification(
+                recipient=hr.newcomer,
+                notif_type='status_changed',
+                title='Request Accepted!',
+                body=f'{helper_name} accepted your {hr.category} request.',
+                related_request=hr,
+            )
+        elif new_status == 'declined':
+            _push_notification(
+                recipient=hr.newcomer,
+                notif_type='status_changed',
+                title='Request Declined',
+                body=f'{helper_name} is unable to take your {hr.category} request right now.',
+                related_request=hr,
+            )
+        elif new_status == 'done':
+            _push_notification(
+                recipient=hr.newcomer,
+                notif_type='status_changed',
+                title='Session Complete',
+                body=f'Your session with {helper_name} has been marked as done.',
+                related_request=hr,
+            )
+        elif new_status == 'cancelled' and hr.helper:
+            _push_notification(
+                recipient=hr.helper,
+                notif_type='status_changed',
+                title='Request Cancelled',
+                body=f'{newcomer_name} cancelled their {hr.category} request.',
+                related_request=hr,
+            )
+
         return Response(HelpRequestSerializer(hr, context={'request': request}).data)
+
+
+
+class VerificationStatusView(APIView):
+    """
+    GET /users/me/verification-status/
+    Returns completion status for the 5 helper verification steps.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+ 
+    def get(self, request):
+        user = request.user
+ 
+        # ── Step 1: Verify ID ────────────────────────────────────────────────
+        step_id = {
+            'key':       'verify_id',
+            'title':     'Verify Your ID',
+            'desc':      'Submit a government-issued photo ID',
+            'icon':      'badge',
+            'completed': user.id_verified,
+            'route':     'verify_id',
+        }
+ 
+        # ── Step 2: Photo + Bio ──────────────────────────────────────────────
+        has_photo = user.profile_images.filter(is_primary=True).exists()
+        has_bio   = bool(user.bio and len(user.bio.strip()) >= 20)
+        step_photo = {
+            'key':       'photo_bio',
+            'title':     'Add Photo & Bio',
+            'desc':      'Upload a profile photo and write a short bio (20+ chars)',
+            'icon':      'person',
+            'completed': has_photo and has_bio,
+            'sub': {
+                'photo': has_photo,
+                'bio':   has_bio,
+            },
+            'route': 'edit_profile',
+        }
+ 
+        # ── Step 3: Specialties ───────────────────────────────────────────────
+        specialty_count = user.specialties.count()
+        step_specialties = {
+            'key':       'specialties',
+            'title':     'Choose Your Specialties',
+            'desc':      'Pick at least 1 area you can help newcomers with',
+            'icon':      'star',
+            'completed': specialty_count >= 1,
+            'count':     specialty_count,
+            'route':     'edit_profile',
+        }
+ 
+        # ── Step 4: Intro Video ───────────────────────────────────────────────
+        # Stored as a URL in bio or a dedicated field — extend User model
+        # if you add an intro_video field later. For now we check a placeholder.
+        has_video = getattr(user, 'intro_video_url', None) not in (None, '')
+        step_video = {
+            'key':       'intro_video',
+            'title':     'Record Intro Video',
+            'desc':      'A short 30-60 second video helps newcomers trust you',
+            'icon':      'videocam',
+            'completed': has_video,
+            'route':     'intro_video',
+        }
+ 
+        # ── Step 5: Set Your Rate ─────────────────────────────────────────────
+        step_rate = {
+            'key':       'set_rate',
+            'title':     'Set Your Rate',
+            'desc':      'Choose hourly rate or offer a free/package price',
+            'icon':      'payments',
+            'completed': user.hourly_rate is not None,
+            'current_rate': str(user.hourly_rate) if user.hourly_rate else None,
+            'route':     'set_price',
+        }
+ 
+        steps = [step_id, step_photo, step_specialties, step_video, step_rate]
+        completed_count = sum(1 for s in steps if s['completed'])
+ 
+        return Response({
+            'steps':           steps,
+            'completed_count': completed_count,
+            'total':           len(steps),
+            'is_verified':     user.is_verified,
+            'ready_to_submit': completed_count == len(steps) and not user.is_verified,
+        })
+
+
+# ── Notifications ──────────────────────────────────────────────────────────────
+
+class NotificationListView(generics.ListAPIView):
+    serializer_class   = NotificationSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        return Notification.objects.filter(recipient=self.request.user)
+
+
+class NotificationUnreadCountView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        count = Notification.objects.filter(
+            recipient=request.user, is_read=False
+        ).count()
+        return Response({'count': count})
+
+
+class NotificationMarkReadView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def patch(self, request, pk):
+        notif = get_object_or_404(Notification, pk=pk, recipient=request.user)
+        notif.is_read = True
+        notif.save(update_fields=['is_read'])
+        return Response({'status': 'ok'})
+
+
+class NotificationMarkAllReadView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        Notification.objects.filter(
+            recipient=request.user, is_read=False
+        ).update(is_read=True)
+        return Response({'status': 'ok'})

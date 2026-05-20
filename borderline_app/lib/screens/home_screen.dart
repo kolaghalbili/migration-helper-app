@@ -11,6 +11,10 @@ import 'map_screen.dart';
 import 'edit_profile_screen.dart';
 import 'search_filter_screen.dart';
 import 'quick_match_screen.dart';
+import 'my_requests_screen.dart';
+import 'notifications_screen.dart';
+import '../services/notification_service.dart';
+import 'dart:async';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -21,31 +25,45 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   final ApiService _apiService = ApiService();
+  final _notifService = NotificationService();
   final _searchController = TextEditingController();
 
   List<Helper> _allHelpers = [];
   List<Helper> _filtered = [];
   bool _isLoading = true;
   String _selectedSpecialty = 'All';
+  int _unreadNotifCount = 0;
+  Timer? _notifTimer;
 
   // Current user (for role routing + nationality/language matching)
   Map<String, dynamic>? _me;
 
   FilterParams _filters = FilterParams.defaults;
 
-  final List<String> _specialties = [
-    'All', 'Banking', 'Housing', 'SIM Card',
-    'Legal & Documents', 'Language Support',
-  ];
+  List<String> _specialties = ['All'];
 
   @override
   void initState() {
     super.initState();
     _init();
+    _fetchUnreadCount();
+    _notifTimer = Timer.periodic(
+      const Duration(seconds: 30),
+      (_) => _fetchUnreadCount(),
+    );
+  }
+
+  Future<void> _fetchUnreadCount() async {
+    final count = await _notifService.getUnreadCount();
+    if (mounted) setState(() => _unreadNotifCount = count);
   }
 
   Future<void> _init() async {
-    final me = await AuthService().getMe();
+    final authService = AuthService();
+    final meFuture = authService.getMe();
+    final specialtiesFuture = authService.getSpecialties();
+
+    final me = await meFuture;
     if (!mounted) return;
     if (me != null && me['role'] == 'helper') {
       Navigator.pushReplacement(
@@ -54,6 +72,10 @@ class _HomeScreenState extends State<HomeScreen> {
       );
       return;
     }
+
+    final specialties = await specialtiesFuture;
+    if (!mounted) return;
+
     setState(() {
       _me = me;
       final scope = me?['helper_scope'] as String? ?? 'any';
@@ -61,6 +83,10 @@ class _HomeScreenState extends State<HomeScreen> {
         nationalityMatch: scope == 'same_nationality' ? 'same' : 'any',
         languageMatch: scope == 'language_match',
       );
+      _specialties = [
+        'All',
+        ...specialties.map((s) => s['name'] as String),
+      ];
     });
     await _loadHelpers();
   }
@@ -161,6 +187,7 @@ class _HomeScreenState extends State<HomeScreen> {
         builder: (_) => SearchFilterScreen(
           initial:      _filters,
           totalHelpers: _filtered.length,
+          categories:   _specialties.where((s) => s != 'All').toList(),
         ),
       ),
     );
@@ -187,6 +214,15 @@ class _HomeScreenState extends State<HomeScreen> {
               MaterialPageRoute(builder: (_) => const HelperMapScreen()),
             ),
           ),
+          IconButton(
+            icon: const Icon(Icons.assignment_outlined, color: Colors.white),
+            tooltip: 'My Requests',
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const MyRequestsScreen()),
+            ),
+          ),
+          _bellIcon(),
           IconButton(
             icon: const Icon(Icons.manage_accounts_outlined, color: Colors.white),
             tooltip: 'Edit Profile',
@@ -525,8 +561,51 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
       );
 
+  Widget _bellIcon() {
+    return Stack(
+      alignment: Alignment.center,
+      children: [
+        IconButton(
+          icon: const Icon(Icons.notifications_outlined, color: Colors.white),
+          tooltip: 'Notifications',
+          onPressed: () async {
+            await Navigator.push(
+              context,
+              MaterialPageRoute(
+                  builder: (_) => const NotificationsScreen()),
+            );
+            _fetchUnreadCount();
+          },
+        ),
+        if (_unreadNotifCount > 0)
+          Positioned(
+            right: 8,
+            top: 8,
+            child: Container(
+              width: 17,
+              height: 17,
+              decoration: const BoxDecoration(
+                color: Color(0xFFE8944A),
+                shape: BoxShape.circle,
+              ),
+              child: Center(
+                child: Text(
+                  _unreadNotifCount > 9 ? '9+' : '$_unreadNotifCount',
+                  style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 9,
+                      fontWeight: FontWeight.bold),
+                ),
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
   @override
   void dispose() {
+    _notifTimer?.cancel();
     _searchController.dispose();
     super.dispose();
   }

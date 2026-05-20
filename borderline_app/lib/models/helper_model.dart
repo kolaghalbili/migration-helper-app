@@ -44,6 +44,7 @@ class HelpRequest {
   final String package;
   final String status;
   final String createdAt;
+  final String updatedAt;
 
   HelpRequest({
     required this.id,
@@ -57,6 +58,7 @@ class HelpRequest {
     required this.package,
     required this.status,
     required this.createdAt,
+    this.updatedAt = '',
   });
 
   factory HelpRequest.fromJson(Map<String, dynamic> json) => HelpRequest(
@@ -71,6 +73,7 @@ class HelpRequest {
         package: json['package'] ?? '',
         status: json['status'] ?? 'pending',
         createdAt: json['created_at'] ?? '',
+        updatedAt: json['updated_at'] ?? '',
       );
 }
 

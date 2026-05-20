@@ -32,6 +32,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _emailCtrl     = TextEditingController();
   final _passwordCtrl  = TextEditingController();
   bool _obscurePassword = true;
+  bool _emailTaken     = false;   // set true when server says email is in use
+  bool _checkingEmail  = false;   // true while the server check is in-flight
 
   // ── Step 2 – Background ───────────────────────────────────────────────────
   final _nationalityCtrl = TextEditingController();
@@ -52,8 +54,39 @@ class _RegisterScreenState extends State<RegisterScreen> {
   List<XFile> _photos = [];
 
   // ── Navigation ────────────────────────────────────────────────────────────
-  void _next() {
-    if (_currentStep == 0 && !_step1Key.currentState!.validate()) return;
+  Future<void> _next() async {
+    if (_currentStep == 0) {
+      // Local format validation first — fast, no network call
+      if (!_step1Key.currentState!.validate()) return;
+
+      // Server-side email uniqueness check
+      setState(() => _checkingEmail = true);
+      try {
+        final available = await _authService.checkEmailAvailable(_emailCtrl.text);
+        if (!available) {
+          setState(() {
+            _emailTaken    = true;
+            _checkingEmail = false;
+          });
+          // Re-run the form validator so the inline error appears immediately
+          _step1Key.currentState!.validate();
+          return;
+        }
+      } catch (_) {
+        setState(() => _checkingEmail = false);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text("Couldn't verify email. Check your connection and try again."),
+              backgroundColor: Colors.redAccent,
+            ),
+          );
+        }
+        return;
+      }
+      setState(() => _checkingEmail = false);
+    }
+
     if (_currentStep < 3) {
       _pageController.nextPage(
           duration: const Duration(milliseconds: 300), curve: Curves.easeInOut);
@@ -285,23 +318,50 @@ class _RegisterScreenState extends State<RegisterScreen> {
     final isLastStep = _currentStep == 3;
     return Container(
       padding: const EdgeInsets.fromLTRB(24, 12, 24, 20),
-      child: SizedBox(
-        width: double.infinity,
-        height: 52,
-        child: ElevatedButton(
-          onPressed: _isLoading ? null : (isLastStep ? _submit : _next),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: const Color(0xFFE8944A),
-            foregroundColor: Colors.white,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          SizedBox(
+            width: double.infinity,
+            height: 52,
+            child: ElevatedButton(
+              onPressed: (_isLoading || _checkingEmail) ? null : (isLastStep ? _submit : _next),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFE8944A),
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+              ),
+              child: (_isLoading || _checkingEmail)
+                  ? const CircularProgressIndicator(color: Colors.white)
+                  : Text(
+                      isLastStep ? 'Create Account' : 'Continue',
+                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                    ),
+            ),
           ),
-          child: _isLoading
-              ? const CircularProgressIndicator(color: Colors.white)
-              : Text(
-                  isLastStep ? 'Create Account' : 'Continue',
-                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                ),
-        ),
+          const SizedBox(height: 14),
+          GestureDetector(
+            onTap: () => Navigator.of(context).pushAndRemoveUntil(
+              MaterialPageRoute(builder: (_) => const LoginScreen()),
+              (route) => false,
+            ),
+            child: const Text.rich(
+              TextSpan(
+                text: 'Already have an account? ',
+                style: TextStyle(color: Color(0xFF7A8B9A)),
+                children: [
+                  TextSpan(
+                    text: 'Sign in',
+                    style: TextStyle(
+                      color: Color(0xFF1A3A5C),
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -338,9 +398,19 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
             const SizedBox(height: 16),
             _label('Email'),
-            _field(_emailCtrl, 'you@example.com', Icons.email_outlined,
-                keyboardType: TextInputType.emailAddress,
-                validator: (v) => v == null || !v.contains('@') ? 'Enter a valid email' : null),
+            TextFormField(
+              controller: _emailCtrl,
+              keyboardType: TextInputType.emailAddress,
+              decoration: _inputDecoration('you@example.com', Icons.email_outlined),
+              onChanged: (_) {
+                if (_emailTaken) setState(() => _emailTaken = false);
+              },
+              validator: (v) {
+                if (v == null || !v.contains('@')) return 'Enter a valid email';
+                if (_emailTaken) return 'An account with this email already exists';
+                return null;
+              },
+            ),
 
             const SizedBox(height: 16),
             _label('Password'),
@@ -605,16 +675,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   ),
                 ),
               ],
-            ),
-          ),
-          const SizedBox(height: 16),
-          Center(
-            child: GestureDetector(
-              onTap: () => Navigator.pop(context),
-              child: const Text(
-                'Already have an account? Login',
-                style: TextStyle(color: Color(0xFF1A3A5C), fontWeight: FontWeight.w500),
-              ),
             ),
           ),
         ],

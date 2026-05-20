@@ -249,7 +249,7 @@ class _RateScreenState extends State<RateScreen> {
           maxLines: 4,
           maxLength: 300,
           decoration: InputDecoration(
-            hintText: '"Reza literally saved my first week..."',
+            hintText: '"They literally saved my first week..."',
             filled: true,
             fillColor: Colors.white,
             border: OutlineInputBorder(

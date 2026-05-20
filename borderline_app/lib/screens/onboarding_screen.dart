@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'register_screen.dart';
+import 'login_screen.dart';
 
 class OnboardingScreen extends StatefulWidget {
   const OnboardingScreen({super.key});
@@ -103,8 +104,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
             // Already have account
             GestureDetector(
-              onTap: () => Navigator.push(context,
-                  MaterialPageRoute(builder: (_) => const RegisterScreen())),
+              onTap: () => Navigator.pushReplacement(context,
+                  MaterialPageRoute(builder: (_) => const LoginScreen())),
               child: const Text.rich(
                 TextSpan(
                   text: 'Already have an account? ',

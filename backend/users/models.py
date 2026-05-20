@@ -81,6 +81,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     rating_avg     = models.DecimalField(max_digits=3, decimal_places=2, default=0.00)
     total_reviews  = models.IntegerField(default=0)
     total_sessions = models.IntegerField(default=0)
+    intro_video_url = models.URLField(blank=True)
     is_active      = models.BooleanField(default=True)
     is_staff       = models.BooleanField(default=False)
     date_joined    = models.DateTimeField(default=timezone.now)
@@ -142,6 +143,30 @@ class HelperBadge(models.Model):
 
     def __str__(self):
         return f'{self.helper} — {self.get_badge_type_display()}'
+
+
+class Notification(models.Model):
+    class Type(models.TextChoices):
+        NEW_REQUEST    = 'new_request',    'New Help Request'
+        STATUS_CHANGED = 'status_changed', 'Request Status Changed'
+        NEW_MESSAGE    = 'new_message',    'New Message'
+
+    recipient       = models.ForeignKey(User, on_delete=models.CASCADE, related_name='notifications')
+    notif_type      = models.CharField(max_length=30, choices=Type.choices)
+    title           = models.CharField(max_length=200)
+    body            = models.CharField(max_length=500, blank=True)
+    is_read         = models.BooleanField(default=False)
+    related_request = models.ForeignKey(
+        'HelpRequest', on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='notifications'
+    )
+    created_at      = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f'[{self.notif_type}] → {self.recipient}: {self.title}'
 
 
 class Review(models.Model):

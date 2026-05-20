@@ -4,9 +4,10 @@ from . import views
 
 urlpatterns = [
     # Auth
-    path('auth/register/', views.RegisterView.as_view(),  name='register'),
-    path('auth/login/',    views.LoginView.as_view(),     name='login'),
-    path('auth/refresh/',  TokenRefreshView.as_view(),    name='token_refresh'),
+    path('auth/register/',     views.RegisterView.as_view(),    name='register'),
+    path('auth/check-email/',  views.CheckEmailView.as_view(),  name='check-email'),
+    path('auth/login/',        views.LoginView.as_view(),       name='login'),
+    path('auth/refresh/',      TokenRefreshView.as_view(),      name='token_refresh'),
 
     # Current user
     path('users/me/',          views.MeView.as_view(),             name='me'),
@@ -35,4 +36,11 @@ urlpatterns = [
     # Help requests
     path('requests/',                  views.HelpRequestView.as_view(),       name='help-requests'),
     path('requests/<int:pk>/status/',  views.HelpRequestStatusView.as_view(), name='request-status'),
+    path('users/me/verification-status/', views.VerificationStatusView.as_view(), name='verification-status'),
+
+    # Notifications
+    path('notifications/',                       views.NotificationListView.as_view(),       name='notifications'),
+    path('notifications/unread-count/',          views.NotificationUnreadCountView.as_view(), name='notifications-unread-count'),
+    path('notifications/read-all/',              views.NotificationMarkAllReadView.as_view(), name='notifications-read-all'),
+    path('notifications/<int:pk>/read/',         views.NotificationMarkReadView.as_view(),   name='notification-read'),
 ]

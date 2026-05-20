@@ -52,6 +52,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
 
     @database_sync_to_async
     def save_message(self, sender_id, content):
+        from users.models import Notification
         sender = User.objects.get(id=sender_id)
         conversation = Conversation.objects.get(id=self.conversation_id)
         msg = Message.objects.create(
@@ -59,6 +60,13 @@ class ChatConsumer(AsyncWebsocketConsumer):
             sender=sender,
             content=content,
         )
+        for recipient in conversation.participants.exclude(id=sender_id):
+            Notification.objects.create(
+                recipient=recipient,
+                notif_type='new_message',
+                title=f'New message from {sender.first_name}',
+                body=content[:120],
+            )
         return {
             'sender_name': sender.first_name,
             'created_at': str(msg.created_at),

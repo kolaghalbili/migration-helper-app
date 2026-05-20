@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from django.contrib.auth.password_validation import validate_password
-from .models import User, Specialty, UserImage, Review, HelpRequest, HelperBadge
+from .models import User, Specialty, UserImage, Review, HelpRequest, HelperBadge, Notification
 
 
 class SpecialtySerializer(serializers.ModelSerializer):
@@ -165,7 +165,17 @@ class HelpRequestSerializer(serializers.ModelSerializer):
         ]
 
     def get_newcomer_name(self, obj):
-        return obj.newcomer.first_name
+        return f'{obj.newcomer.first_name} {obj.newcomer.last_name}'.strip()
 
     def get_helper_name(self, obj):
-        return obj.helper.first_name if obj.helper else None
+        if obj.helper:
+            return f'{obj.helper.first_name} {obj.helper.last_name}'.strip()
+        return None
+
+
+class NotificationSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Notification
+        fields = ['id', 'notif_type', 'title', 'body', 'is_read',
+                  'related_request', 'created_at']
+        read_only_fields = fields

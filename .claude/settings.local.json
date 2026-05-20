@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(dart analyze *)",
+      "Bash(python -c ' *)",
+      "Bash(python manage.py shell -c \"from users.models import Specialty; s = Specialty.objects.filter\\(name__iexact='Reza'\\); print\\('Found:', s.count\\(\\), list\\(s.values\\('id','name'\\)\\)\\); s.delete\\(\\); print\\('Deleted.'\\)\")",
+      "Bash(flutter analyze *)",
+      "Bash(python manage.py makemigrations users --name notification_model)",
+      "Bash(python manage.py migrate)"
+    ]
+  }
+}

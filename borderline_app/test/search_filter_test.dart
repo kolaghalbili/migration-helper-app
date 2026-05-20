@@ -31,6 +31,7 @@ void main() {
         home: SearchFilterScreen(
           initial: FilterParams.defaults,
           totalHelpers: 23,
+          categories: const ['Banking', 'Housing', 'SIM & Net'],
         ),
       ));
       await tester.pumpAndSettle();
@@ -44,6 +45,7 @@ void main() {
         home: SearchFilterScreen(
           initial: FilterParams(city: 'Berlin', maxRate: 30),
           totalHelpers: 5,
+          categories: const ['Banking', 'Housing'],
         ),
       ));
       await tester.pumpAndSettle();
@@ -64,6 +66,7 @@ void main() {
               ctx,
               MaterialPageRoute(builder: (_) => SearchFilterScreen(
                 initial: FilterParams.defaults, totalHelpers: 10,
+                categories: const ['Banking', 'Housing'],
               )),
             );
           },

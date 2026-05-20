@@ -9,6 +9,15 @@ import 'inbox_screen.dart';
 import 'map_screen.dart';
 import 'chat_screen.dart';
 import 'request_intake_screen.dart';
+import 'earnings_screen.dart';
+import 'tabs/calendar_tab.dart';
+import 'tabs/rep_growth_tab.dart';
+import 'tabs/helper_empty_state_tab.dart';
+import 'verification_checklist_screen.dart';
+import 'received_requests_screen.dart';
+import 'notifications_screen.dart';
+import '../services/notification_service.dart';
+import 'dart:async';
 
 class HelperDashboardScreen extends StatefulWidget {
   const HelperDashboardScreen({super.key});
@@ -20,21 +29,36 @@ class HelperDashboardScreen extends StatefulWidget {
 class _HelperDashboardScreenState extends State<HelperDashboardScreen>
     with SingleTickerProviderStateMixin {
   final _authService = AuthService();
+  final _notifService = NotificationService();
   late TabController _tabController;
 
   Map<String, dynamic>? _me;
   List<HelpRequest> _requests = [];
   bool _isLoading = true;
+  int _unreadNotifCount = 0;
+  Timer? _notifTimer;
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 4, vsync: this);
+    // 7 tabs: New | Active | Done | Badges | Calendar | Rep | Setup
+    _tabController = TabController(length: 7, vsync: this);
     _load();
+    _fetchUnreadCount();
+    _notifTimer = Timer.periodic(
+      const Duration(seconds: 30),
+      (_) => _fetchUnreadCount(),
+    );
+  }
+
+  Future<void> _fetchUnreadCount() async {
+    final count = await _notifService.getUnreadCount();
+    if (mounted) setState(() => _unreadNotifCount = count);
   }
 
   @override
   void dispose() {
+    _notifTimer?.cancel();
     _tabController.dispose();
     super.dispose();
   }
@@ -62,11 +86,12 @@ class _HelperDashboardScreenState extends State<HelperDashboardScreen>
   List<HelpRequest> get _done =>
       _requests.where((r) => r.status == 'done').toList();
 
+  bool get _isFirstTimer =>
+      (_me?['total_sessions'] ?? 0) == 0 && _requests.isEmpty;
+
   Future<void> _updateStatus(HelpRequest req, String newStatus) async {
     final ok = await _authService.updateRequestStatus(req.id, newStatus);
-    if (ok && mounted) {
-      _load();
-    }
+    if (ok && mounted) _load();
   }
 
   Future<void> _openChat(int newcomerId, String newcomerName) async {
@@ -95,6 +120,22 @@ class _HelperDashboardScreenState extends State<HelperDashboardScreen>
         title: const Text('My Dashboard',
             style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.bar_chart, color: Colors.white),
+            tooltip: 'Earnings',
+            onPressed: () => Navigator.push(
+                context, MaterialPageRoute(builder: (_) => const EarningsScreen())),
+          ),
+          IconButton(
+            icon: const Icon(Icons.assignment_outlined, color: Colors.white),
+            tooltip: 'All Requests',
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                  builder: (_) => const ReceivedRequestsScreen()),
+            ),
+          ),
+          _bellIcon(),
           IconButton(
             icon: const Icon(Icons.map_outlined, color: Colors.white),
             tooltip: 'Map view',
@@ -133,11 +174,16 @@ class _HelperDashboardScreenState extends State<HelperDashboardScreen>
           indicatorColor: const Color(0xFFE8944A),
           labelColor: Colors.white,
           unselectedLabelColor: Colors.white60,
+          isScrollable: true,
+          tabAlignment: TabAlignment.start,
           tabs: [
             Tab(text: 'New (${_pending.length})'),
             Tab(text: 'Active (${_accepted.length})'),
             Tab(text: 'Done (${_done.length})'),
             const Tab(text: 'Badges'),
+            const Tab(icon: Icon(Icons.calendar_month_outlined, size: 20)),
+            const Tab(icon: Icon(Icons.trending_up_outlined, size: 20)),
+            const Tab(icon: Icon(Icons.checklist_outlined, size: 20)),
           ],
         ),
       ),
@@ -156,12 +202,70 @@ class _HelperDashboardScreenState extends State<HelperDashboardScreen>
                         _buildRequestList(_accepted, showDone: true),
                         _buildRequestList(_done),
                         _buildBadgesTab(),
+                        // ── New tabs ──────────────────────
+                        CalendarTab(requests: _requests),
+                        RepGrowthTab(
+                          me: _me,
+                          pendingCount: _pending.length,
+                          acceptedCount: _accepted.length,
+                          doneCount: _done.length,
+                        ),
+                        _isFirstTimer
+                            ? HelperEmptyStateTab(
+                                me: _me, onRefresh: _load)
+                            : const VerificationChecklistScreen(),
                       ],
                     ),
                   ),
                 ],
               ),
             ),
+    );
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // All existing widgets below are unchanged from original
+  // ─────────────────────────────────────────────────────────────────────────
+
+  Widget _bellIcon() {
+    return Stack(
+      alignment: Alignment.center,
+      children: [
+        IconButton(
+          icon: const Icon(Icons.notifications_outlined, color: Colors.white),
+          tooltip: 'Notifications',
+          onPressed: () async {
+            await Navigator.push(
+              context,
+              MaterialPageRoute(
+                  builder: (_) => const NotificationsScreen()),
+            );
+            _fetchUnreadCount();
+          },
+        ),
+        if (_unreadNotifCount > 0)
+          Positioned(
+            right: 8,
+            top: 8,
+            child: Container(
+              width: 17,
+              height: 17,
+              decoration: const BoxDecoration(
+                color: Color(0xFFE8944A),
+                shape: BoxShape.circle,
+              ),
+              child: Center(
+                child: Text(
+                  _unreadNotifCount > 9 ? '9+' : '$_unreadNotifCount',
+                  style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 9,
+                      fontWeight: FontWeight.bold),
+                ),
+              ),
+            ),
+          ),
+      ],
     );
   }
 
@@ -201,8 +305,7 @@ class _HelperDashboardScreenState extends State<HelperDashboardScreen>
                 ),
               ),
               Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                 decoration: BoxDecoration(
                   color: (_me?['is_available'] == true)
                       ? Colors.green.withValues(alpha: 0.12)
@@ -214,9 +317,7 @@ class _HelperDashboardScreenState extends State<HelperDashboardScreen>
                   style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
-                    color: (_me?['is_available'] == true)
-                        ? Colors.green
-                        : Colors.grey,
+                    color: (_me?['is_available'] == true) ? Colors.green : Colors.grey,
                   ),
                 ),
               ),
@@ -258,12 +359,9 @@ class _HelperDashboardScreenState extends State<HelperDashboardScreen>
             const SizedBox(height: 4),
             Text(value,
                 style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 15,
-                    color: color)),
+                    fontWeight: FontWeight.bold, fontSize: 15, color: color)),
             Text(label,
-                style: const TextStyle(
-                    fontSize: 10, color: Color(0xFF7A8B9A))),
+                style: const TextStyle(fontSize: 10, color: Color(0xFF7A8B9A))),
           ],
         ),
       ),
@@ -415,18 +513,15 @@ class _HelperDashboardScreenState extends State<HelperDashboardScreen>
           ),
           if (showActions || showDone)
             Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
               decoration: const BoxDecoration(
-                border: Border(
-                    top: BorderSide(color: Color(0xFFF0F0F0))),
+                border: Border(top: BorderSide(color: Color(0xFFF0F0F0))),
               ),
               child: Row(
                 children: [
                   Expanded(
                     child: OutlinedButton.icon(
-                      onPressed: () =>
-                          _openChat(req.newcomer, req.newcomerName),
+                      onPressed: () => _openChat(req.newcomer, req.newcomerName),
                       icon: const Icon(Icons.chat_bubble_outline, size: 16),
                       label: const Text('Chat'),
                       style: OutlinedButton.styleFrom(
@@ -456,8 +551,7 @@ class _HelperDashboardScreenState extends State<HelperDashboardScreen>
                           final result = await Navigator.push<String>(
                             context,
                             MaterialPageRoute(
-                              builder: (_) =>
-                                  RequestIntakeScreen(request: req),
+                              builder: (_) => RequestIntakeScreen(request: req),
                             ),
                           );
                           if (result == 'accepted' || result == 'declined') {
@@ -506,8 +600,8 @@ class _HelperDashboardScreenState extends State<HelperDashboardScreen>
     final pair = colors[status] ?? colors['pending']!;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-      decoration: BoxDecoration(
-          color: pair[0], borderRadius: BorderRadius.circular(20)),
+      decoration:
+          BoxDecoration(color: pair[0], borderRadius: BorderRadius.circular(20)),
       child: Text(status,
           style: TextStyle(
               fontSize: 11, fontWeight: FontWeight.w600, color: pair[1])),
@@ -537,13 +631,13 @@ class _HelperDashboardScreenState extends State<HelperDashboardScreen>
 
   Widget _buildBadgesTab() {
     const allBadges = [
-      {'type': 'banking',    'icon': '🏦', 'label': 'Banking Pro',       'desc': 'Expert at opening accounts & banking setup'},
-      {'type': 'housing',    'icon': '🏠', 'label': 'Housing Wiz',        'desc': 'Skilled at finding apartments & contracts'},
-      {'type': 'sim_card',   'icon': '📱', 'label': 'SIM Card Expert',    'desc': 'Knows every carrier & prepaid plan'},
-      {'type': 'legal',      'icon': '📄', 'label': 'Legal Guide',        'desc': 'Helps with permits, registration & tax'},
-      {'type': 'language',   'icon': '💬', 'label': 'Language Coach',     'desc': 'Translation & language support specialist'},
-      {'type': 'job_search', 'icon': '💼', 'label': 'Job Search Pro',     'desc': 'CV writing, interviews & job listings'},
-      {'type': 'community',  'icon': '🌍', 'label': 'Community Builder',  'desc': 'Connects newcomers with local circles'},
+      {'type': 'banking',    'icon': '🏦', 'label': 'Banking Pro',      'desc': 'Expert at opening accounts & banking setup'},
+      {'type': 'housing',    'icon': '🏠', 'label': 'Housing Wiz',       'desc': 'Skilled at finding apartments & contracts'},
+      {'type': 'sim_card',   'icon': '📱', 'label': 'SIM Card Expert',   'desc': 'Knows every carrier & prepaid plan'},
+      {'type': 'legal',      'icon': '📄', 'label': 'Legal Guide',       'desc': 'Helps with permits, registration & tax'},
+      {'type': 'language',   'icon': '💬', 'label': 'Language Coach',    'desc': 'Translation & language support specialist'},
+      {'type': 'job_search', 'icon': '💼', 'label': 'Job Search Pro',    'desc': 'CV writing, interviews & job listings'},
+      {'type': 'community',  'icon': '🌍', 'label': 'Community Builder', 'desc': 'Connects newcomers with local circles'},
     ];
 
     final earnedTypes = (_me?['badges'] as List? ?? [])
@@ -577,10 +671,8 @@ class _HelperDashboardScreenState extends State<HelperDashboardScreen>
               fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF1A3A5C)),
         ),
         const SizedBox(height: 4),
-        const Text(
-          'Complete sessions in these areas to apply for verification.',
-          style: TextStyle(fontSize: 12, color: Color(0xFF7A8B9A)),
-        ),
+        const Text('Complete sessions in these areas to apply for verification.',
+            style: TextStyle(fontSize: 12, color: Color(0xFF7A8B9A))),
         const SizedBox(height: 14),
         ...allBadges
             .where((b) => !earnedTypes.contains(b['type']))
@@ -640,9 +732,8 @@ class _HelperDashboardScreenState extends State<HelperDashboardScreen>
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               decoration: BoxDecoration(
-                color: const Color(0xFFF5F0EB),
-                borderRadius: BorderRadius.circular(8),
-              ),
+                  color: const Color(0xFFF5F0EB),
+                  borderRadius: BorderRadius.circular(8)),
               child: const Text('Not yet',
                   style: TextStyle(
                       fontSize: 11,
@@ -655,14 +746,9 @@ class _HelperDashboardScreenState extends State<HelperDashboardScreen>
 
   String _categoryIcon(String category) {
     const icons = {
-      'Banking': '🏦',
-      'Housing': '🏠',
-      'SIM Card': '📱',
-      'Legal & Documents': '📄',
-      'Healthcare': '🏥',
-      'Language Support': '💬',
-      'Job Search': '💼',
-      'General Guidance': '🧭',
+      'Banking': '🏦', 'Housing': '🏠', 'SIM Card': '📱',
+      'Legal & Documents': '📄', 'Healthcare': '🏥',
+      'Language Support': '💬', 'Job Search': '💼', 'General Guidance': '🧭',
     };
     return icons[category] ?? '🤝';
   }

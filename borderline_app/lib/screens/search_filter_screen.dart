@@ -4,11 +4,13 @@ import '../models/filter_params.dart';
 class SearchFilterScreen extends StatefulWidget {
   final FilterParams initial;
   final int totalHelpers;
+  final List<String> categories;
 
   const SearchFilterScreen({
     super.key,
     required this.initial,
     required this.totalHelpers,
+    required this.categories,
   });
 
   @override
@@ -18,11 +20,6 @@ class SearchFilterScreen extends StatefulWidget {
 class _SearchFilterScreenState extends State<SearchFilterScreen> {
   late FilterParams _params;
   late TextEditingController _cityController;
-
-  static const _categories = [
-    'Banking', 'Paperwork', 'Housing', 'SIM & Net', 'Schools',
-    'Jobs & Referrals', 'Transit', 'Shopping', 'Emotional Support', 'Networking',
-  ];
 
   static const _primary = Color(0xFF1A3A5C);
   static const _accent  = Color(0xFFE8944A);
@@ -161,7 +158,7 @@ class _SearchFilterScreenState extends State<SearchFilterScreen> {
           Wrap(
             spacing: 8,
             runSpacing: 8,
-            children: _categories.map((cat) {
+            children: widget.categories.map((cat) {
               final selected = _params.selectedCategory == cat;
               return GestureDetector(
                 onTap: () => setState(() => _params = _params.copyWith(

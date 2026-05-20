@@ -30,6 +30,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   bool _isLoading = false;
   bool _isSaving = false;
 
+  // specialties
+  List<Map<String, dynamic>> _allSpecialties = [];
+  Set<int> _selectedSpecialtyIds = {};
+
   // current profile images loaded from backend
   List<Map<String, dynamic>> _images = [];
 
@@ -41,7 +45,11 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
   Future<void> _loadProfile() async {
     setState(() => _isLoading = true);
-    final me = await _authService.getMe();
+    final meFuture = _authService.getMe();
+    final specialtiesFuture = _authService.getSpecialties();
+
+    final me = await meFuture;
+    final allSpecialties = await specialtiesFuture;
     if (me == null || !mounted) return;
 
     setState(() {
@@ -56,7 +64,12 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       _isAvailable         = me['is_available'] ?? true;
       _isHelper            = me['role'] == 'helper';
       _images              = List<Map<String, dynamic>>.from(me['profile_images'] ?? []);
-      _isLoading           = false;
+      _allSpecialties      = allSpecialties;
+      _selectedSpecialtyIds = {
+        for (final s in (me['specialties'] as List? ?? []))
+          s['id'] as int,
+      };
+      _isLoading = false;
     });
   }
 
@@ -66,15 +79,16 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     final rate = double.tryParse(_rateCtrl.text.trim());
 
     final ok = await _authService.updateProfile(
-      firstName:   _firstNameCtrl.text.trim(),
-      lastName:    _lastNameCtrl.text.trim(),
-      bio:         _bioCtrl.text.trim(),
-      nationality: _nationalityCtrl.text.trim(),
-      country:     _countryCtrl.text.trim(),
-      city:        _cityCtrl.text.trim(),
-      languages:   _languages,
-      hourlyRate:  rate,
-      isAvailable: _isAvailable,
+      firstName:    _firstNameCtrl.text.trim(),
+      lastName:     _lastNameCtrl.text.trim(),
+      bio:          _bioCtrl.text.trim(),
+      nationality:  _nationalityCtrl.text.trim(),
+      country:      _countryCtrl.text.trim(),
+      city:         _cityCtrl.text.trim(),
+      languages:    _languages,
+      hourlyRate:   rate,
+      isAvailable:  _isAvailable,
+      specialtyIds: _selectedSpecialtyIds.toList(),
     );
 
     setState(() => _isSaving = false);
@@ -430,6 +444,63 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             ],
           ),
         ),
+        const SizedBox(height: 20),
+        _buildSpecialtiesSection(),
+      ],
+    );
+  }
+
+  Widget _buildSpecialtiesSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _label('Areas You Help With'),
+        const Text(
+          'Select the categories you can assist newcomers with.',
+          style: TextStyle(fontSize: 13, color: Color(0xFF7A8B9A)),
+        ),
+        const SizedBox(height: 12),
+        if (_allSpecialties.isEmpty)
+          const Text('No specialty options available.',
+              style: TextStyle(color: Color(0xFF7A8B9A)))
+        else
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: _allSpecialties.map((spec) {
+              final id       = spec['id'] as int;
+              final name     = spec['name'] as String;
+              final icon     = (spec['icon'] as String?) ?? '';
+              final selected = _selectedSpecialtyIds.contains(id);
+              return GestureDetector(
+                onTap: () => setState(() {
+                  if (selected) {
+                    _selectedSpecialtyIds.remove(id);
+                  } else {
+                    _selectedSpecialtyIds.add(id);
+                  }
+                }),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: selected ? const Color(0xFFE8944A) : Colors.white,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: selected ? const Color(0xFFE8944A) : const Color(0xFF1A3A5C),
+                    ),
+                  ),
+                  child: Text(
+                    icon.isNotEmpty ? '$icon $name' : name,
+                    style: TextStyle(
+                      color: selected ? Colors.white : const Color(0xFF1A3A5C),
+                      fontWeight: FontWeight.w600,
+                      fontSize: 13,
+                    ),
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
       ],
     );
   }
